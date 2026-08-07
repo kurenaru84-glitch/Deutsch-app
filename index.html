@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA用（スマホでアプリとして開く設定） -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0b0f19">
+    <title>ドイツ語 TOEFL単語アプリ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: #050811;
+            color: #fff;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 850px;
+            background: #0b0f19;
+            border-radius: 0px;
+            box-shadow: 0 0 35px rgba(56, 189, 248, 0.25);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        @media (min-width: 500px) {
+            #game-container { height: 750px; border-radius: 24px; border: 2px solid #1e293b; }
+        }
+
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            z-index: 10;
+            background: #0b0f19;
+        }
+        .hidden { display: none !important; }
+
+        .title { font-size: 1.8rem; font-weight: 800; text-align: center; color: #38bdf8; margin: 10px 0 2px; text-shadow: 0 0 15px rgba(56, 189, 248, 0.6); }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 15px; font-size: 0.85rem; }
+        
+        .mode-toggle-container {
+            display: flex; justify-content: center; background: #1e293b; border-radius: 12px; padding: 4px; margin-bottom: 12px;
+        }
+        .mode-btn {
+            flex: 1; padding: 8px; border: none; background: transparent; color: #94a3b8; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-btn.active { background: #38bdf8; color: #0f172a; }
+
+        .settings-panel {
+            background: #141c2e; border: 1px solid #1e293b; border-radius: 14px; padding: 12px; margin-bottom: 15px;
+            display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem;
+        }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; }
+        .setting-row input[type="range"] { width: 100px; }
+        .setting-row input[type="file"] { font-size: 0.75rem; color: #94a3b8; width: 150px; }
+        .speed-options { display: flex; gap: 4px; }
+        .speed-btn {
+            background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+        }
+        .speed-btn.active { background: #f59e0b; color: #0f172a; font-weight: bold; }
+
+        /* メインカテゴリー一覧 */
+        .category-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 2px; flex-grow: 1; }
+        .category-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #38bdf8; border-radius: 16px; padding: 16px; color: #fff;
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15); transition: all 0.2s;
+        }
+        .category-card:active { transform: scale(0.98); }
+        .category-title { font-size: 1.2rem; font-weight: bold; color: #38bdf8; }
+        .category-desc { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+
+        .stage-btn {
+            background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 12px 14px; color: #fff;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+        }
+        .stage-btn.review-btn { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+
+        /* レベル選択モーダル */
+        .modal-overlay {
+            position: absolute; inset: 0; background: rgba(11, 15, 25, 0.9); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; padding: 20px; z-index: 50;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-title { font-size: 1.3rem; font-weight: bold; color: #38bdf8; }
+        .close-btn { background: #334155; border: none; color: #fff; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .level-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; flex-grow: 1; }
+        .level-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; text-align: center;
+            cursor: pointer; transition: all 0.1s;
+        }
+        .level-card:active { background: #38bdf8; color: #0f172a; }
+        .level-card .lvl-num { font-size: 1.1rem; font-weight: bold; }
+        .level-card .lvl-count { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+
+        /* ゲーム画面 */
+        .header-bar { display: flex; justify-content: space-between; align-items: center; height: 35px; z-index: 5; }
+        .hp-container { width: 100px; height: 12px; background: #334155; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
+        .hp-bar { width: 100%; height: 100%; background: #ef4444; transition: width 0.2s ease; }
+        .header-controls { display: flex; gap: 6px; }
+        .icon-btn {
+            background: #1e293b; border: 1px solid #334155; color: #f8fafc; padding: 4px 8px; border-radius: 8px;
+            font-size: 0.75rem; font-weight: bold; cursor: pointer;
+        }
+        .score-info { text-align: right; font-weight: bold; font-size: 0.85rem; color: #f59e0b; }
+
+        .game-field {
+            flex-grow: 1; position: relative; border-radius: 16px;
+            margin: 8px 0; overflow: hidden; border: 1px solid #1e293b;
+            background: linear-gradient(180deg, #0284c7 0%, #15803d 100%);
+        }
+
+        .lane-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(255, 255, 255, 0.15); }
+        .dead-line { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+        .falling-word {
+            position: absolute; width: 46%; padding: 12px 6px; background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(4px);
+            border: 2px solid #38bdf8; border-radius: 10px; text-align: center; font-size: 1rem; font-weight: bold; color: #f8fafc;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .falling-word.active { border-color: #f59e0b; box-shadow: 0 0 18px rgba(245, 158, 11, 0.7); }
+        .falling-word.shake { animation: shake 0.2s ease; border-color: #ef4444 !important; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+        .lane-0 { left: 2%; }
+        .lane-1 { right: 2%; }
+
+        .controls-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 210px; }
+        .side-column { display: grid; grid-template-rows: repeat(4, 1fr); gap: 6px; }
+        .opt-btn {
+            background: #1e293b; border: 2px solid #334155; color: #f8fafc; font-size: 0.85rem; font-weight: bold;
+            border-radius: 10px; cursor: pointer; transition: all 0.05s; display: flex; align-items: center; justify-content: center;
+            padding: 2px 4px; text-align: center;
+        }
+        .opt-btn:active { transform: scale(0.95); background: #38bdf8; color: #0f172a; }
+
+        .pause-overlay {
+            position: absolute; inset: 0; background: rgba(11, 15, 25, 0.85); backdrop-filter: blur(6px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; z-index: 30;
+        }
+        .pause-title { font-size: 1.8rem; font-weight: bold; color: #f59e0b; }
+
+        #particle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
+
+        .flash-overlay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 20; }
+        .flash-overlay.damage { background: rgba(239, 68, 68, 0.35); opacity: 1; }
+        .flash-overlay.success { background: rgba(56, 189, 248, 0.25); opacity: 1; }
+
+        /* リザルト画面 */
+        .result-title { font-size: 1.8rem; text-align: center; margin-top: 5px; font-weight: bold; }
+        .clear { color: #38bdf8; }
+        .failed { color: #ef4444; }
+
+        .ranking-box { background: #1e293b; border: 1px solid #ef4444; border-radius: 12px; padding: 8px 12px; margin-top: 6px; }
+        .ranking-title { font-size: 0.8rem; font-weight: bold; color: #f87171; margin-bottom: 4px; text-align: center; }
+        .ranking-list { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; }
+        .ranking-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #334155; padding-bottom: 2px; }
+
+        .review-container {
+            flex-grow: 1; overflow-y: auto; margin: 8px 0; background: #141c2e; border-radius: 12px; padding: 8px;
+            display: flex; flex-direction: column; gap: 6px; border: 1px solid #1e293b;
+        }
+        .review-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; }
+        .review-item.correct-item { background: rgba(56, 189, 248, 0.1); border-left: 4px solid #38bdf8; }
+        .review-item.wrong-item { background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; }
+        
+        .manual-check-btn {
+            background: #334155; border: 1px solid #475569; color: #94a3b8; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+        }
+        .manual-check-btn.checked { background: #ef4444; color: #fff; }
+        .manual-check-btn.cleared { background: #38bdf8; color: #0f172a; }
+
+        .action-btn { background: #38bdf8; color: #0f172a; border: none; padding: 12px; font-size: 1rem; font-weight: bold; border-radius: 12px; cursor: pointer; }
+    </style>
+</head>
+<body onclick="initAudioOnFirstTouch()">
+
+<div id="game-container">
+    <div id="flash" class="flash-overlay"></div>
+
+    <!-- 1. メインメニュー画面 -->
+    <div id="screen-select" class="screen">
+        <div class="title">DEUTSCH APP</div>
+        <div class="subtitle">ドイツ語 単語学習</div>
+
+        <div class="mode-toggle-container">
+            <button id="mode-jp-de" class="mode-btn active" onclick="setMode('jp-de')">日 ➔ 独</button>
+            <button id="mode-de-jp" class="mode-btn" onclick="setMode('de-jp')">独 ➔ 日</button>
+        </div>
+
+        <div class="settings-panel">
+            <div class="setting-row">
+                <span>🎵 BGM選択:</span>
+                <input type="file" id="bgm-file" accept="audio/*" onchange="loadCustomBGM(this)">
+            </div>
+            <div class="setting-row">
+                <span>🎵 BGM音量:</span>
+                <input type="range" id="bgm-volume" min="0" max="1" step="0.05" value="0.3" oninput="updateVolume()">
+            </div>
+            <div class="setting-row">
+                <span>🔔 SE音量:</span>
+                <input type="range" id="se-volume" min="0" max="1" step="0.05" value="0.5" oninput="updateVolume()">
+            </div>
+            <div class="setting-row">
+                <span>⚡ 速度:</span>
+                <div class="speed-options">
+                    <button class="speed-btn" onclick="setSpeed(0.9, this)">遅い</button>
+                    <button class="speed-btn active" onclick="setSpeed(1.2, this)">標準</button>
+                    <button class="speed-btn" onclick="setSpeed(1.6, this)">早い</button>
+                    <button class="speed-btn" onclick="setSpeed(2.2, this)">激早</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="category-list">
+            <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="startReviewStage()">
+                <span id="review-btn-text">🔥 弱点・復習モード (0件)</span>
+                <span>▶</span>
+            </button>
+
+            <!-- 集約された Toefl カテゴリー -->
+            <div class="category-card" onclick="openToeflModal()">
+                <div>
+                    <div class="category-title">📘 Toefl単語</div>
+                    <div class="category-desc">全300単語 (Level 1 〜 15)</div>
+                </div>
+                <div style="font-size: 1.5rem; color: #38bdf8;">▶</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOEFL レベル選択モーダル -->
+    <div id="toefl-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">Toefl レベル選択</div>
+            <button class="close-btn" onclick="closeToeflModal()">✕ 閉じる</button>
+        </div>
+        <div class="level-grid" id="toefl-level-grid"></div>
+    </div>
+
+    <!-- 2. ゲーム画面 -->
+    <div id="screen-game" class="screen hidden">
+        <div class="header-bar">
+            <div class="hp-container"><div id="hp-bar" class="hp-bar"></div></div>
+            <div class="header-controls">
+                <button class="icon-btn" onclick="togglePause()">⏸ ポーズ</button>
+                <button class="icon-btn" onclick="quitGame()">↩ 戻る</button>
+            </div>
+            <div class="score-info">
+                <span id="combo-count">0</span> COMBO<br>
+                <span id="progress-count" style="font-size:0.75rem; color:#94a3b8;">CLEAR: 0/40</span>
+            </div>
+        </div>
+
+        <div class="game-field" id="game-field">
+            <canvas id="particle-canvas"></canvas>
+            <div class="lane-line"></div>
+            <div class="dead-line"></div>
+
+            <div id="pause-overlay" class="pause-overlay hidden">
+                <div class="pause-title">PAUSED</div>
+                <button class="action-btn" style="width: 160px;" onclick="togglePause()">再開する</button>
+                <button class="action-btn" style="width: 160px; background:#ef4444; color:#fff;" onclick="quitGame()">終了する</button>
+            </div>
+        </div>
+
+        <div class="controls-wrapper">
+            <div class="side-column" id="left-options"></div>
+            <div class="side-column" id="right-options"></div>
+        </div>
+    </div>
+
+    <!-- 3. リザルト画面 -->
+    <div id="screen-result" class="screen hidden">
+        <div id="result-title" class="result-title">STAGE CLEAR!</div>
+        <div style="text-align:center; font-size:0.85rem; color:#f59e0b; margin-top:2px;">
+            SCORE: <span id="final-score">0</span> | MAX COMBO: <span id="max-combo">0</span>
+        </div>
+
+        <div class="ranking-box">
+            <div class="ranking-title">⚠️ あなたの苦手な単語 TOP 5</div>
+            <div class="ranking-list" id="ranking-list"></div>
+        </div>
+
+        <div style="font-size:0.85rem; font-weight:bold; margin-top:8px; color:#38bdf8;">単語の振り返り</div>
+        <div class="review-container" id="review-container"></div>
+
+        <button class="action-btn" onclick="showSelectScreen()">メインメニューへ戻る</button>
+    </div>
+</div>
+
+<script>
+    // CSV（全300語）
+    const rawToeflWords = [
+        {de: "entwässern", jp: "排水する"}, {de: "der Satellit", jp: "衛星"}, {de: "die Psychologie", jp: "心理学"}, {de: "die Gliedmaße", jp: "手足"}, {de: "konservativ", jp: "保守的な"},
+        {de: "komplizieren", jp: "複雑にする"}, {de: "die Frömmigkeit", jp: "信心"}, {de: "der Thunfisch", jp: "マグロ"}, {de: "beleuchten", jp: "照らす"}, {de: "vereinen", jp: "統合する"},
+        {de: "das Festmahl", jp: "祝宴"}, {de: "das Vakuum", jp: "真空"}, {de: "die Entdeckung", jp: "発見"}, {de: "der Anfall", jp: "発作"}, {de: "aufblasen", jp: "膨らませる"},
+        {de: "die Befeuchtung", jp: "加湿"}, {de: "trocknen", jp: "乾燥させる"}, {de: "das Getreide", jp: "穀物"}, {de: "der Kontinent", jp: "大陸"}, {de: "sparen", jp: "節約する"},
+        {de: "die Genetik", jp: "遺伝学"}, {de: "überfluten", jp: "水浸しにする"}, {de: "verringern", jp: "減らす"}, {de: "die Kolonie", jp: "植民地"}, {de: "die Hypothese", jp: "仮説"},
+        {de: "der Meteorit", jp: "隕石"}, {de: "die Vorfahrt", jp: "優先権"}, {de: "verformen", jp: "変形させる"}, {de: "der Feind", jp: "敵"}, {de: "das Moor", jp: "湿原"},
+        {de: "der Ziegel", jp: "レンガ"}, {de: "die Infiltration", jp: "潜入"}, {de: "eindringen", jp: "侵入する"}, {de: "zerstören", jp: "破壊する"}, {de: "die Bakterie", jp: "細菌"},
+        {de: "die Säure", jp: "酸"}, {de: "der Gletscher", jp: "氷河"}, {de: "die Geologie", jp: "地質学"}, {de: "das Mineral", jp: "鉱物"}, {de: "die Galaxie", jp: "銀河"},
+        {de: "das Raumschiff", jp: "宇宙船"}, {de: "die Reibung", jp: "摩擦"}, {de: "der Schamane", jp: "シャーマン"}, {de: "der Schlamm", jp: "泥"}, {de: "die Höhle", jp: "洞窟"},
+        {de: "die Ernte", jp: "収穫"}, {de: "das Vieh", jp: "家畜"}, {de: "die Siedlung", jp: "集落"}, {de: "der Handwerker", jp: "職人"}, {de: "die Töpferware", jp: "陶器"},
+        {de: "die Inschrift", jp: "碑文"}, {de: "die Zivilisation", jp: "文明"}, {de: "die Pyramide", jp: "ピラミッド"}, {de: "das Fossil", jp: "化石"}, {de: "die Evolution", jp: "進化"},
+        {de: "die Dinosauriermarke", jp: "恐竜の痕跡"}, {de: "das Ökosystem", jp: "生態系"}, {de: "die Photosynthese", jp: "光合成"}, {de: "die Blüte", jp: "花びら/開花"}, {de: "der Sauerstoff", jp: "酸素"},
+        {de: "der Kohlenstoff", jp: "炭素"}, {de: "der Wasserstoff", jp: "水素"}, {de: "der Stickstoff", jp: "窒素"}, {de: "die Atmosphäre", jp: "大気"}, {de: "die Verwitterung", jp: "風化"},
+        {de: "die Erosion", jp: "浸食"}, {de: "das Sediment", jp: "堆積物"}, {de: "der Krater", jp: "噴火口"}, {de: "das Magma", jp: "マグマ"}, {de: "die Lava", jp: "溶岩"},
+        {de: "das Erdbeben", jp: "地震"}, {de: "der Tsunami", jp: "津波"}, {de: "die Dürre", jp: "日照り/干ばつ"}, {de: "die Taifun", jp: "台風"}, {de: "die Überschwemmung", jp: "洪水"},
+        {de: "das Schmelzen", jp: "融解"}, {de: "die Verdunstung", jp: "蒸発"}, {de: "der Niederschlag", jp: "降水量"}, {de: "die Feuchtigkeit", jp: "湿度"}, {de: "die Temperatur", jp: "温度"},
+        {de: "der Druck", jp: "圧力"}, {de: "die Dichte", jp: "密度"}, {de: "die Masse", jp: "質量"}, {de: "die Energie", jp: "エネルギー"}, {de: "die Strahlung", jp: "放射線"},
+        {de: "die Welle", jp: "波"}, {de: "das Spektrum", jp: "スペクトル"}, {de: "das Atom", jp: "原子"}, {de: "das Molekül", jp: "分子"}, {de: "das Element", jp: "元素"},
+        {de: "die Verbindung", jp: "化合物/接続"}, {de: "die Lösung", jp: "溶液/解決"}, {de: "die Reaktion", jp: "反応"}, {de: "der Katalysator", jp: "触媒"}, {de: "das Enzym", jp: "酵素"},
+        {de: "das Protein", jp: "タンパク質"}, {de: "das Vitamin", jp: "ビタミン"}, {de: "das Hormon", jp: "ホルモン"}, {de: "das Gewebe", jp: "組織/織物"}, {de: "das Organ", jp: "器官/臓器"},
+        {de: "das System", jp: "体系/システム"}, {de: "die Funktion", jp: "機能"}, {de: "die Struktur", jp: "構造"}, {de: "der Prozess", jp: "過程/プロセス"}, {de: "die Theorie", jp: "理論"},
+        {de: "die Methode", jp: "方法"}, {de: "das Experiment", jp: "実験"}, {de: "die Beobachtung", jp: "観察"}, {de: "die Analyse", jp: "分析"}, {de: "das Ergebnis", jp: "結果"},
+        {de: "die Schlussfolgerung", jp: "結論"}, {de: "der Beweis", jp: "証明/証拠"}, {de: "die Quelle", jp: "情報源/源泉"}, {de: "der Text", jp: "本文/テキスト"}, {de: "der Autor", jp: "著者"},
+        {de: "die Literatur", jp: "文学"}, {de: "das Gedicht", jp: "詩"}, {de: "der Roman", jp: "小説"}, {de: "das Drama", jp: "劇/ドラマ"}, {de: "die Kunst", jp: "芸術"},
+        {de: "die Musik", jp: "音楽"}, {de: "die Architektur", jp: "建築"}, {de: "die Plastik", jp: "彫刻/プラスチック"}, {de: "das Malerei", jp: "絵画"}, {de: "der Stil", jp: "様式/スタイル"},
+        {de: "die Epoche", jp: "時代/エポック"}, {de: "die Geschichte", jp: "歴史"}, {de: "die Gesellschaft", jp: "社会"}, {de: "die Kultur", jp: "文化"}, {de: "die Religion", jp: "宗教"}, {de: "die Philosophie", jp: "哲学"},
+        {de: "die Politik", jp: "政治"}, {de: "die Wirtschaft", jp: "経済"}, {de: "der Handel", jp: "貿易/商業"}, {de: "die Industrie", jp: "工業"}, {de: "die Landwirtschaft", jp: "農業"},
+        {de: "die Technologie", jp: "技術"}, {de: "die Innovation", jp: "革新"}, {de: "die Erfindung", jp: "発明"}, {de: "das Patent", jp: "特許"}, {de: "die Produktion", jp: "生産"},
+        {de: "der Konsum", jp: "消費"}, {de: "der Markt", jp: "市場"}, {de: "der Preis", jp: "価格/賞"}, {de: "der Gewinn", jp: "利益"}, {de: "der Verlust", jp: "損失"},
+        {de: "das Kapital", jp: "資本"}, {de: "die Investition", jp: "投資"}, {de: "die Bank", jp: "銀行"}, {de: "die Währung", jp: "通貨"}, {de: "die Steuer", jp: "税金"},
+        {de: "das Gesetz", jp: "法律"}, {de: "das Recht", jp: "権利/法"}, {de: "das Gericht", jp: "裁判所/料理"}, {de: "der Richter", jp: "裁判官"}, {de: "der Anwalt", jp: "弁護士"},
+        {de: "die Strafe", jp: "罰"}, {de: "verbrechen", jp: "犯罪を犯す"}, {de: "die Polizei", jp: "警察"}, {de: "der Staat", jp: "国家"}, {de: "die Regierung", jp: "政府"},
+        {de: "die Partei", jp: "政党"}, {de: "die Wahl", jp: "選挙/選択"}, {de: "der Bürger", jp: "市民"}, {de: "die Freiheit", jp: "自由"}, {de: "die Gleichheit", jp: "平等"},
+        {de: "die Gerechtigkeit", jp: "正義"}, {de: "der Frieden", jp: "平和"}, {de: "der Krieg", jp: "戦争"}, {de: "die Armee", jp: "軍隊"}, {de: "die Waffe", jp: "武器"},
+        {de: "der Sieg", jp: "勝利"}, {de: "die Niederlage", jp: "敗北"}, {de: "der Vertrag", jp: "契約/条約"}, {de: "die Bündnis", jp: "同盟"}, {de: "die Grenze", jp: "国境/限界"},
+        {de: "die Migration", jp: "移民/移動"}, {de: "die Bevölkerung", jp: "人口"}, {de: "die Stadt", jp: "都市"}, {de: "das Dorf", jp: "村"}, {de: "die Region", jp: "地域"},
+        {de: "das Klima", jp: "気候"}, {de: "die Umwelt", jp: "環境"}, {de: "der Schutz", jp: "保護"}, {de: "die Verschmutzung", jp: "汚染"}, {de: "der Abfall", jp: "ゴミ/廃棄物"},
+        {de: "das Recycling", jp: "リサイクル"}, {de: "die Ressource", jp: "資源"}, {de: "das Öl", jp: "石油/油"}, {de: "die Kohle", jp: "石炭"}, {de: "das Gas", jp: "ガス"},
+        {de: "die Kernkraft", jp: "原子力"}, {de: "die Solarstrom", jp: "太陽光発電"}, {de: "die Windenergie", jp: "風力エネルギー"}, {de: "die Nachhaltigkeit", jp: "持続可能性"}, {de: "die Entwicklung", jp: "開発/発展"},
+        {de: "das Wachstum", jp: "成長"}, {de: "die Krise", jp: "危機"}, {de: "die Katastrophe", jp: "大惨事"}, {de: "die Hilfe", jp: "支援/救助"}, {de: "die Organisation", jp: "組織"},
+        {de: "die Bildung", jp: "教育"}, {de: "die Universität", jp: "大学"}, {de: "der Student", jp: "大学生"}, {de: "der Professor", jp: "教授"}, {de: "das Studium", jp: "大学での勉強"},
+        {de: "die Forschung", jp: "研究"}, {de: "das Institut", jp: "研究所"}, {de: "das Labor", jp: "実験室"}, {de: "die Bibliothek", jp: "図書館"}, {de: "das Buch", jp: "本"},
+        {de: "der Artikel", jp: "記事/論文"}, {de: "die Zeitschrift", jp: "雑誌"}, {de: "die Zeitung", jp: "新聞"}, {de: "die Medien", jp: "メディア"}, {de: "das Internet", jp: "インターネット"},
+        {de: "die Kommunikation", jp: "コミュニケーション"}, {de: "die Sprache", jp: "言語"}, {de: "das Wort", jp: "単語/言葉"}, {de: "der Satz", jp: "文"}, {de: "die Grammatik", jp: "文法"},
+        {de: "die Übersetzung", jp: "翻訳"}, {de: "die Bedeutung", jp: "意味"}, {de: "der Begriff", jp: "概念"}, {de: "die Definition", jp: "定義"}, {de: "das Symbol", jp: "象徴/シンボル"},
+        {de: "das Signal", jp: "信号"}, {de: "die Information", jp: "情報"}, {de: "die Daten", jp: "データ"}, {de: "der Computer", jp: "コンピュータ"}, {de: "die Software", jp: "ソフトウェア"},
+        {de: "das Netzwerk", jp: "ネットワーク"}, {de: "die Sicherheit", jp: "安全/セキュリティ"}, {de: "das Risiko", jp: "リスク"}, {de: "die Gefahr", jp: "危険"}, {de: "die Gesundheit", jp: "健康"},
+        {de: "die Krankheit", jp: "病気"}, {de: "die Medizin", jp: "医学/薬"}, {de: "der Arzt", jp: "医師"}, {de: "das Krankenhaus", jp: "病院"}, {de: "die Therapie", jp: "治療"},
+        {de: "die Zelle", jp: "細胞"}, {de: "das Blut", jp: "血液"}, {de: "das Herz", jp: "心臓"}, {de: "das Gehirn", jp: "脳"}, {de: "der Muskel", jp: "筋肉"},
+        {de: "der Knochen", jp: "骨"}, {de: "die Haut", jp: "皮膚"}, {de: "das Auge", jp: "目"}, {de: "das Ohr", jp: "耳"}, {de: "der Geschmack", jp: "味覚"},
+        {de: "der Geruch", jp: "嗅覚"}, {de: "das Gefühl", jp: "感情/感覚"}, {de: "der Gedanke", jp: "考え/思考"}, {de: "das Gedächtnis", jp: "記憶"}, {de: "das Bewusstsein", jp: "意識"},
+        {de: "der Traum", jp: "夢"}, {de: "die Schlaf", jp: "睡眠"}, {de: "die Stress", jp: "ストレス"}, {de: "die Angst", jp: "不安/恐怖"}, {de: "die Freude", jp: "喜び"},
+        {de: "die Trauer", jp: "悲しみ"}, {de: "die Wut", jp: "怒り"}, {de: "die Liebe", jp: "愛"}, {de: "das Verhalten", jp: "行動"}, {de: "die Person", jp: "個人/人物"},
+        {de: "die Identität", jp: "アイデンティティ"}, {de: "die Rolle", jp: "役割"}, {de: "die Norm", jp: "規範"}, {de: "der Wert", jp: "価値"}, {de: "die Moral", jp: "道徳"},
+        {de: "die Ethik", jp: "倫理"}, {de: "die Logik", jp: "論理"}, {de: "die Mathematik", jp: "数学"}, {de: "die Zahl", jp: "数字"}, {de: "die Formel", jp: "公式"},
+        {de: "die Gleichung", jp: "方程式"}, {de: "die Geometrie", jp: "幾何学"}, {de: "die Statistik", jp: "統計"}, {de: "die Wahrscheinlichkeit", jp: "確率"}, {de: "das Diagramm", jp: "図表"},
+        {de: "die Tabelle", jp: "表"}, {de: "die Karte", jp: "地図/カード"}, {de: "die Skizze", jp: "スケッチ"}, {de: "das Modell", jp: "模型/モデル"}, {de: "die Simulation", jp: "シミュレーション"},
+        {de: "das Phänomen", jp: "現象"}, {de: "die Ursache", jp: "原因"}, {de: "die Wirkung", jp: "効果/影響"}, {de: "der Einfluss", jp: "影響"}, {de: "die Veränderung", jp: "変化"},
+        {de: "die Bewegung", jp: "運動/動き"}, {de: "die Geschwindigkeit", jp: "速度"}, {de: "die Beschleunigung", jp: "加速度"}, {de: "die Kraft", jp: "力"}, {de: "die Masse", jp: "質量"},
+        {de: "das Gewicht", jp: "重量"}, {de: "das Volumen", jp: "体積"}, {de: "die Fläche", jp: "面積"}, {de: "die Länge", jp: "長さ"}, {de: "die Höhe", jp: "高さ"},
+        {de: "die Tiefe", jp: "深さ"}, {de: "die Breite", jp: "幅"}, {de: "der Abstand", jp: "距離/間隔"}, {de: "die Zeit", jp: "時間"}, {de: "die Dauer", jp: "期間"},
+        {de: "die Zukunft", jp: "未来"}, {de: "die Gegenwart", jp: "現在"}, {de: "die Vergangenheit", jp: "過去"}, {de: "der Moment", jp: "瞬間"}, {de: "die Periode", jp: "周期/時代"},
+        {de: "die Phase", jp: "段階/フェーズ"}, {de: "der Zyklus", jp: "周期/サイクル"}, {de: "die Stabilität", jp: "安定性"}, {de: "das Gleichgewicht", jp: "均衡/バランス"}, {de: "die Wandlung", jp: "変容"},
+        {de: "die Anpassung", jp: "適応"}, {de: "die Überlebensrate", jp: "生存率"}, {de: "die Aussterben", jp: "絶滅"}, {de: "die Vielfalt", jp: "多様性"}, {de: "die Art", jp: "種/種類"},
+        {de: "die Rechnung", jp: "請求書"}, {de: "das Kamel", jp: "ラクダ"}, {de: "untätig", jp: "暇な"}, {de: "das Budget", jp: "予算"}, {de: "die Spannung", jp: "緊張"},
+        {de: "der Index", jp: "索引"}, {de: "das Gewissen", jp: "良心"}, {de: "die Physik", jp: "物理学"}, {de: "der Affe", jp: "類人猿"}, {de: "die Betonung", jp: "強調"}
+    ];
+
+    const stagesData = {};
+    for (let i = 0; i < 15; i++) {
+        stagesData[i + 1] = rawToeflWords.slice(i * 20, (i + 1) * 20);
+    }
+    const masterPool = rawToeflWords;
+
+    // Web Audio API による自作Synth BGM（デフォルトBGM再生対応）
+    let audioCtx = null;
+    let synthBgmTimer = null;
+    let customAudio = new Audio();
+    customAudio.loop = true;
+
+    let bgmVol = 0.3;
+    let seVol = 0.5;
+
+    function initAudioOnFirstTouch() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playSynthBGM() {
+        if (!audioCtx || bgmVol <= 0) return;
+        stopSynthBGM();
+        
+        const notes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
+        let step = 0;
+        synthBgmTimer = setInterval(() => {
+            if (customAudio.src) return; // カスタムBGMが指定されていればSynthは鳴らさない
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = notes[step % notes.length];
+                gain.gain.setValueAtTime(bgmVol * 0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+                step++;
+            } catch(e){}
+        }, 300);
+    }
+
+    function stopSynthBGM() {
+        if (synthBgmTimer) {
+            clearInterval(synthBgmTimer);
+            synthBgmTimer = null;
+        }
+    }
+
+    function startBGM() {
+        if (customAudio.src) {
+            customAudio.volume = bgmVol;
+            customAudio.currentTime = 0;
+            customAudio.play().catch(()=>{});
+        } else {
+            playSynthBGM();
+        }
+    }
+
+    function stopBGM() {
+        if (customAudio.src) customAudio.pause();
+        stopSynthBGM();
+    }
+
+    function loadCustomBGM(input) {
+        if (input.files && input.files[0]) {
+            customAudio.src = URL.createObjectURL(input.files[0]);
+        }
+    }
+
+    function playSuccessSE() {
+        if (!audioCtx || seVol <= 0) return;
+        try {
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(seVol * 0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        } catch(e){}
+    }
+
+    function buildLevelGridUI() {
+        const grid = document.getElementById('toefl-level-grid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= 15; i++) {
+            const card = document.createElement('div');
+            card.className = 'level-card';
+            card.onclick = () => {
+                closeToeflModal();
+                startStage(i);
+            };
+            card.innerHTML = `<div class="lvl-num">Level ${i}</div><div class="lvl-count">20 単語</div>`;
+            grid.appendChild(card);
+        }
+    }
+
+    function openToeflModal() { document.getElementById('toefl-modal').classList.remove('hidden'); }
+    function closeToeflModal() { document.getElementById('toefl-modal').classList.add('hidden'); }
+
+    let particles = [];
+    function createShootingStar(x, y) {
+        for (let i = 0; i < 15; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.2) * 8 + 3,
+                vy: (Math.random() - 0.5) * 6 - 2,
+                color: ['#38bdf8', '#f59e0b', '#ffffff', '#a855f7'][Math.floor(Math.random() * 4)],
+                radius: Math.random() * 3 + 1.5,
+                alpha: 1,
+                decay: Math.random() * 0.02 + 0.015
+            });
+        }
+    }
+
+    function renderParticles() {
+        const canvas = document.getElementById('particle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.alpha -= p.decay;
+            if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    let reviewPool = JSON.parse(localStorage.getItem('hamaru_review_pool') || '[]');
+    let wordStats = JSON.parse(localStorage.getItem('hamaru_word_stats') || '{}');
+
+    function saveData() {
+        localStorage.setItem('hamaru_review_pool', JSON.stringify(reviewPool));
+        localStorage.setItem('hamaru_word_stats', JSON.stringify(wordStats));
+    }
+
+    let gameMode = 'jp-de';
+    let dropSpeed = 1.2;
+    let currentStage = 1;
+    let isReviewMode = false;
+    let isPaused = false;
+    
+    let sessionWords = [];
+    let activeWords = [];
+    let hp = 100, score = 0, combo = 0, maxCombo = 0, solvedCount = 0, requiredTotalClears = 40;
+    let gameInterval = null, spawnTimer = 0, nextSpawnLane = 1;
+    let sessionHistory = [];
+
+    function updateVolume() {
+        bgmVol = parseFloat(document.getElementById('bgm-volume').value);
+        seVol = parseFloat(document.getElementById('se-volume').value);
+        if (customAudio.src) customAudio.volume = bgmVol;
+    }
+
+    function setSpeed(speed, btnEl) {
+        dropSpeed = speed;
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+    }
+
+    function setMode(mode) {
+        gameMode = mode;
+        document.getElementById('mode-jp-de').className = `mode-btn ${mode === 'jp-de' ? 'active' : ''}`;
+        document.getElementById('mode-de-jp').className = `mode-btn ${mode === 'de-jp' ? 'active' : ''}`;
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function updateReviewUI() {
+        const btn = document.getElementById('review-stage-btn');
+        if (reviewPool.length > 0) {
+            btn.classList.remove('hidden');
+            document.getElementById('review-btn-text').innerText = `🔥 弱点・復習モード (${reviewPool.length}件)`;
+        } else {
+            btn.classList.add('hidden');
+        }
+    }
+
+    function showSelectScreen() {
+        stopBGM();
+        updateReviewUI();
+        showScreen('screen-select');
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        const overlay = document.getElementById('pause-overlay');
+        if (isPaused) {
+            overlay.classList.remove('hidden');
+            stopBGM();
+        } else {
+            overlay.classList.add('hidden');
+            startBGM();
+        }
+    }
+
+    function quitGame() {
+        if (confirm("ゲームを中断してメインメニューに戻りますか？")) {
+            clearInterval(gameInterval);
+            isPaused = false;
+            document.getElementById('pause-overlay').classList.add('hidden');
+            showSelectScreen();
+        }
+    }
+
+    function startStage(stageNum) {
+        isReviewMode = false;
+        currentStage = stageNum;
+        initSessionWords(stagesData[stageNum]);
+        initGame();
+    }
+
+    function startReviewStage() {
+        if (reviewPool.length === 0) return;
+        isReviewMode = true;
+        initSessionWords(reviewPool);
+        initGame();
+    }
+
+    function initSessionWords(rawList) {
+        sessionWords = rawList.map(item => ({
+            ...item, weight: 10, requiredClears: 2, currentClears: 0
+        }));
+        requiredTotalClears = sessionWords.reduce((sum, w) => sum + w.requiredClears, 0);
+    }
+
+    function initGame() {
+        activeWords = []; sessionHistory = []; particles = [];
+        hp = 100; score = 0; combo = 0; maxCombo = 0; solvedCount = 0;
+        nextSpawnLane = 1; spawnTimer = 999; isPaused = false;
+        document.getElementById('pause-overlay').classList.add('hidden');
+
+        document.getElementById('left-options').innerHTML = '';
+        document.getElementById('right-options').innerHTML = '';
+
+        const field = document.getElementById('game-field');
+        field.querySelectorAll('.falling-word').forEach(e => e.remove());
+
+        const canvas = document.getElementById('particle-canvas');
+        canvas.width = field.clientWidth; canvas.height = field.clientHeight;
+
+        updateUI();
+        showScreen('screen-game');
+        startBGM();
+
+        if (gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(gameLoop, 1000 / 60);
+    }
+
+    function gameLoop() {
+        if (isPaused) return;
+
+        spawnTimer++;
+        if (spawnTimer > (120 / (dropSpeed / 1.2)) && activeWords.length < 2) {
+            spawnNextWord();
+            spawnTimer = 0;
+        }
+
+        const fieldHeight = document.getElementById('game-field').clientHeight - 45;
+        for (let i = activeWords.length - 1; i >= 0; i--) {
+            let item = activeWords[i];
+            item.y += dropSpeed;
+            item.el.style.top = item.y + 'px';
+
+            if (item.y >= fieldHeight) {
+                handleMistake(item.data);
+                removeWord(item);
+            }
+        }
+
+        highlightActiveWords();
+
+        if (activeWords.length === 0) {
+            const allCleared = sessionWords.every(w => w.currentClears >= w.requiredClears);
+            if (allCleared) endGame(true);
+        }
+
+        renderParticles();
+    }
+
+    function selectNextWord(excludeDes = []) {
+        let candidates = sessionWords.filter(w => w.currentClears < w.requiredClears && !excludeDes.includes(w.de));
+        if (candidates.length === 0) candidates = sessionWords.filter(w => !excludeDes.includes(w.de));
+        if (candidates.length === 0) candidates = masterPool.filter(w => !excludeDes.includes(w.de));
+        if (candidates.length === 0) return masterPool[0];
+
+        let totalWeight = candidates.reduce((sum, w) => sum + (w.weight || 10), 0);
+        let rand = Math.random() * totalWeight;
+
+        for (let word of candidates) {
+            if (rand < (word.weight || 10)) return word;
+            rand -= (word.weight || 10);
+        }
+        return candidates[0];
+    }
+
+    function spawnNextWord() {
+        const lane = nextSpawnLane;
+        const activeDes = activeWords.map(a => a.data.de);
+        const wordData = selectNextWord(activeDes);
+        if (!wordData) return;
+
+        const el = document.createElement('div');
+        el.className = `falling-word lane-${lane}`;
+        el.innerText = gameMode === 'jp-de' ? wordData.jp : wordData.de;
+        document.getElementById('game-field').appendChild(el);
+
+        const newWordItem = {
+            data: wordData, el: el, y: 0, lane: lane, spawnTime: Date.now()
+        };
+
+        activeWords.push(newWordItem);
+
+        if (gameMode === 'de-jp') playTTS(wordData.de);
+        generateSideOptionsForWord(newWordItem);
+
+        nextSpawnLane = 1 - lane;
+    }
+
+    function generateSideOptionsForWord(wordItem) {
+        const lane = wordItem.lane;
+        const wordData = wordItem.data;
+        const container = document.getElementById(lane === 1 ? 'right-options' : 'left-options');
+        const correctText = gameMode === 'jp-de' ? wordData.de : wordData.jp;
+
+        let choices = [correctText];
+        while (choices.length < 4) {
+            const randItem = masterPool[Math.floor(Math.random() * masterPool.length)];
+            const text = gameMode === 'jp-de' ? randItem.de : randItem.jp;
+            if (!choices.includes(text)) choices.push(text);
+        }
+
+        for (let i = choices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [choices[i], choices[j]] = [choices[j], choices[i]];
+        }
+
+        const fragment = document.createDocumentFragment();
+        choices.forEach(text => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.innerText = text;
+            btn.onclick = () => checkAnswer(text, lane);
+            fragment.appendChild(btn);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    }
+
+    function highlightActiveWords() {
+        activeWords.forEach((w) => w.el.classList.add('active'));
+    }
+
+    function checkAnswer(selectedText, lane) {
+        if (isPaused) return;
+
+        const targetInLane = activeWords.filter(w => w.lane === lane).sort((a, b) => b.y - a.y)[0];
+        if (!targetInLane) return;
+
+        const correctText = gameMode === 'jp-de' ? targetInLane.data.de : targetInLane.data.jp;
+        const timeTaken = (Date.now() - targetInLane.spawnTime) / 1000;
+
+        if (selectedText === correctText) {
+            score += 100 + (combo * 25);
+            combo++;
+            if (combo > maxCombo) maxCombo = combo;
+
+            let wordObj = targetInLane.data;
+            wordObj.currentClears++;
+            solvedCount++;
+
+            if (timeTaken > 2.0) { wordObj.weight += 12; } 
+            else { wordObj.weight = Math.max(5, wordObj.weight - 5); }
+
+            recordGlobalWordStat(wordObj.de, true, timeTaken);
+
+            const rect = targetInLane.el.getBoundingClientRect();
+            const fieldRect = document.getElementById('game-field').getBoundingClientRect();
+            createShootingStar(rect.left - fieldRect.left + rect.width / 2, rect.top - fieldRect.top + rect.height / 2);
+
+            recordSessionHistory(wordObj, 'correct');
+            playSuccessSE();
+            if (gameMode === 'jp-de') playTTS(wordObj.de);
+
+            triggerFlash('success');
+            document.getElementById(lane === 1 ? 'right-options' : 'left-options').innerHTML = '';
+            removeWord(targetInLane);
+        } else {
+            handleMistake(targetInLane.data);
+            targetInLane.el.classList.remove('shake');
+            void targetInLane.el.offsetWidth;
+            targetInLane.el.classList.add('shake');
+        }
+        updateUI();
+    }
+
+    function handleMistake(wordObj) {
+        combo = 0;
+        takeDamage(12);
+        wordObj.requiredClears = Math.max(wordObj.requiredClears, wordObj.currentClears + 3);
+        wordObj.weight += 35;
+
+        recordGlobalWordStat(wordObj.de, false, 5.0);
+        addReviewPool(wordObj);
+        recordSessionHistory(wordObj, 'wrong');
+        triggerFlash('damage');
+    }
+
+    function recordGlobalWordStat(deText, isCorrect, timeTaken) {
+        if (!wordStats[deText]) wordStats[deText] = { correct: 0, total: 0, avgTime: 2.5 };
+        let stat = wordStats[deText];
+        stat.total++;
+        if (isCorrect) stat.correct++;
+        stat.avgTime = parseFloat(((stat.avgTime * 0.7) + (timeTaken * 0.3)).toFixed(2));
+        saveData();
+    }
+
+    function calculateWeaknessScore(stat) {
+        if (!stat || stat.total === 0) return 0;
+        let wrongRate = (stat.total - stat.correct) / stat.total;
+        let timePenalty = Math.min(1.0, stat.avgTime / 4.0);
+        return Math.round(((wrongRate * 70) + (timePenalty * 30)) * 100);
+    }
+
+    function recordSessionHistory(wordObj, result) {
+        let existing = sessionHistory.find(h => h.word.de === wordObj.de);
+        if (!existing) sessionHistory.push({ word: wordObj, result: result });
+        else if (result === 'wrong') existing.result = 'wrong';
+    }
+
+    function addReviewPool(wordObj) {
+        if (!reviewPool.some(w => w.de === wordObj.de)) {
+            reviewPool.push({ de: wordObj.de, jp: wordObj.jp });
+            saveData();
+        }
+    }
+
+    function removeReviewPool(deText) {
+        reviewPool = reviewPool.filter(w => w.de !== deText);
+        saveData();
+    }
+
+    function removeWord(item) {
+        item.el.remove();
+        activeWords = activeWords.filter(w => w !== item);
+    }
+
+    function takeDamage(amount) {
+        hp -= amount;
+        if (hp <= 0) { hp = 0; endGame(false); }
+        updateUI();
+    }
+
+    function triggerFlash(type) {
+        const el = document.getElementById('flash');
+        el.className = `flash-overlay ${type}`;
+        setTimeout(() => el.className = 'flash-overlay', 150);
+    }
+
+    function updateUI() {
+        document.getElementById('hp-bar').style.width = hp + '%';
+        document.getElementById('combo-count').innerText = combo;
+        document.getElementById('progress-count').innerText = `CLEAR: ${solvedCount}/${requiredTotalClears}`;
+    }
+
+    function playTTS(text) {
+        if ('speechSynthesis' in window && seVol > 0) {
+            setTimeout(() => {
+                window.speechSynthesis.cancel();
+                const uttr = new SpeechSynthesisUtterance(text);
+                uttr.lang = 'de-DE';
+                uttr.volume = seVol;
+                window.speechSynthesis.speak(uttr);
+            }, 0);
+        }
+    }
+
+    function endGame(isClear) {
+        clearInterval(gameInterval);
+        stopBGM();
+
+        const titleEl = document.getElementById('result-title');
+        titleEl.innerText = isClear ? "STAGE CLEAR!" : "GAME OVER";
+        titleEl.className = `result-title ${isClear ? 'clear' : 'failed'}`;
+
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('max-combo').innerText = maxCombo;
+
+        renderWeaknessRanking();
+
+        const reviewContainer = document.getElementById('review-container');
+        reviewContainer.innerHTML = '';
+        
+        sessionHistory.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `review-item ${item.result === 'correct' ? 'correct-item' : 'wrong-item'}`;
+            const inPool = reviewPool.some(w => w.de === item.word.de);
+
+            div.innerHTML = `
+                <span><strong>${item.word.de}</strong> (${item.word.jp})</span>
+                <button class="manual-check-btn ${inPool ? 'checked' : 'cleared'}" onclick="toggleReviewItem('${item.word.de}', '${item.word.jp}', this)">
+                    ${inPool ? '🔥 復習中' : '＋復習に追加'}
+                </button>
+            `;
+            reviewContainer.appendChild(div);
+        });
+
+        showScreen('screen-result');
+    }
+
+    function renderWeaknessRanking() {
+        const listEl = document.getElementById('ranking-list');
+        listEl.innerHTML = '';
+
+        let ranked = Object.keys(wordStats).map(de => {
+            let stat = wordStats[de];
+            return {
+                de: de,
+                score: calculateWeaknessScore(stat),
+                avgTime: stat.avgTime,
+                accuracy: Math.round((stat.correct / stat.total) * 100)
+            };
+        }).sort((a, b) => b.score - a.score).slice(0, 5);
+
+        if (ranked.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; color:#94a3b8;">データが十分にありません</div>';
+            return;
+        }
+
+        const ranks = ['1位', '2位', '3位', '4位', '5位'];
+        ranked.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'ranking-item';
+            div.innerHTML = `
+                <span>${ranks[idx]} <strong>${item.de}</strong></span>
+                <span>正解率: <strong style="color:#ef4444;">${item.accuracy}%</strong> (${item.avgTime}s)</span>
+            `;
+            listEl.appendChild(div);
+        });
+    }
+
+    function toggleReviewItem(deText, jpText, btnEl) {
+        const inPool = reviewPool.some(w => w.de === deText);
+        if (inPool) {
+            removeReviewPool(deText);
+            btnEl.className = "manual-check-btn cleared";
+            btnEl.innerText = "＋復習に追加";
+        } else {
+            addReviewPool({ de: deText, jp: jpText });
+            btnEl.className = "manual-check-btn checked";
+            btnEl.innerText = "🔥 復習中";
+        }
+        updateReviewUI();
+    }
+
+    buildLevelGridUI();
+    updateReviewUI();
+</script>
+
+</body>
+</html>
