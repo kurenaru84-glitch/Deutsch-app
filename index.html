@@ -101,9 +101,12 @@
         .settings-panel {
             background: rgba(20, 12, 40, 0.75);
             border: 1px solid rgba(168, 85, 247, 0.25);
-            border-radius: 14px; padding: 10px; margin-bottom: 10px;
+            border-radius: 14px; padding: 10px; margin-bottom: 8px;
             display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem;
+            flex-shrink: 0;
         }
+        .settings-panel.collapsed .setting-row:not(.settings-toggle-row) { display: none; }
+        .settings-toggle-row { cursor: pointer; font-weight: 800; color: #c4b5fd; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .setting-row input[type="range"] { width: 90px; accent-color: #a855f7; }
         .setting-row input[type="file"] { font-size: 0.68rem; color: #c4b5fd; max-width: 160px; }
@@ -114,7 +117,8 @@
         }
         .speed-btn.active { background: linear-gradient(135deg, #f59e0b, #f97316); color: #1a0a2e; font-weight: 900; border-color: transparent; }
 
-        .category-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px; flex-grow: 1; }
+        .category-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px; flex-grow: 1; min-height: 0; }
+        .category-list-primary { flex-shrink: 0; }
         .category-card, .stage-btn {
             background: linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(30, 15, 60, 0.8) 100%);
             border: 2px solid rgba(168, 85, 247, 0.55);
@@ -443,7 +447,10 @@
             <button id="mode-foreign-jp" class="mode-btn" onclick="setMode('foreign-jp')">外国語 ➔ 日</button>
         </div>
 
-        <div class="settings-panel">
+        <div id="settings-panel" class="settings-panel collapsed">
+            <div class="setting-row settings-toggle-row" onclick="toggleSettingsPanel()">
+                <span>⚙️ 設定（BGM・速度など）</span><span id="settings-toggle-icon">▼ 開く</span>
+            </div>
             <div class="setting-row">
                 <span>📂 単語リスト:</span>
                 <input type="file" id="word-file" accept=".csv,.xlsx,.xls" onchange="importWordList(this)">
@@ -476,14 +483,14 @@
         </div>
 
         <div class="category-list">
+            <div id="category-list-container" class="category-list-primary"></div>
+
             <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="startReviewStage()">
                 <span id="review-btn-text">🔥 弱点・復習 (0件)</span><span>▶</span>
             </button>
             <button id="mastered-list-btn" class="stage-btn mastered-btn" onclick="openMasteredModal()">
                 <span id="mastered-btn-text">✨ 完全に覚えた単語 (0件)</span><span>▶</span>
             </button>
-
-            <div id="category-list-container"></div>
         </div>
     </div>
 
@@ -642,21 +649,33 @@
     function levelKey(cat, part, lvl) { return `${studyLang}_${cat}_${part}_${lvl}`; }
 
     function loadLangData() {
+        if (studyLang === 'de' && !localStorage.getItem(storageKey('review_pool'))) {
+            const migrate = (oldKey, suffix) => {
+                const v = localStorage.getItem(oldKey);
+                if (v) localStorage.setItem(storageKey(suffix), v);
+            };
+            migrate('hamaru_review_pool', 'review_pool');
+            migrate('hamaru_mastered_pool', 'mastered_pool');
+            migrate('hamaru_level_stats', 'level_stats');
+            migrate('hamaru_custom_words', 'custom_words');
+        }
         reviewPool = JSON.parse(localStorage.getItem(storageKey('review_pool')) || '[]');
         masteredPool = JSON.parse(localStorage.getItem(storageKey('mastered_pool')) || '[]');
         levelStats = JSON.parse(localStorage.getItem(storageKey('level_stats')) || '{}');
         customWordData = JSON.parse(localStorage.getItem(storageKey('custom_words')) || '{}');
-        if (studyLang === 'de' && !localStorage.getItem(storageKey('review_pool'))) {
-            const migrate = (oldKey, newKey) => {
-                const v = localStorage.getItem(oldKey);
-                if (v) { localStorage.setItem(newKey, v); }
-            };
-            migrate('hamaru_review_pool', storageKey('review_pool'));
-            migrate('hamaru_mastered_pool', storageKey('mastered_pool'));
-            migrate('hamaru_level_stats', storageKey('level_stats'));
-            migrate('hamaru_custom_words', storageKey('custom_words'));
-            loadLangData();
-        }
+    }
+
+    function closeAllModals() {
+        document.getElementById('part-modal')?.classList.add('hidden');
+        document.getElementById('level-modal')?.classList.add('hidden');
+        document.getElementById('mastered-modal')?.classList.add('hidden');
+    }
+
+    function toggleSettingsPanel() {
+        const panel = document.getElementById('settings-panel');
+        const icon = document.getElementById('settings-toggle-icon');
+        panel.classList.toggle('collapsed');
+        icon.innerText = panel.classList.contains('collapsed') ? '▼ 開く' : '▲ 閉じる';
     }
 
     function getCategoriesForLang(lang) {
@@ -710,6 +729,7 @@
 
     function setStudyLang(lang) {
         if (studyLang === lang) return;
+        closeAllModals();
         studyLang = lang;
         localStorage.setItem('hamaru_study_lang', lang);
         loadLangData();
@@ -718,6 +738,7 @@
         gameMode = 'jp-foreign';
         updateLangUI();
         updateMenuUI();
+        showScreen('screen-select');
     }
 
     function updateLangUI() {
@@ -888,17 +909,24 @@
         getCategoriesForLang(studyLang).forEach(cat => {
             const part = cat.parts[1];
             const info = rebuildPartData(cat.id, part.id);
+            if (info.words.length === 0) {
+                console.warn(`単語データ未読込: ${cat.id} (${studyLang})`);
+            }
             const card = document.createElement('div');
             card.className = 'category-card';
             card.onclick = () => openCategoryModal(cat.id);
+            const countLabel = info.words.length > 0 ? `${info.words.length}語 / Level 1〜${info.levelCount}` : '単語ファイル未読込';
             card.innerHTML = `
                 <div>
                     <div class="category-title">${cat.icon} ${cat.title}</div>
-                    <div class="category-desc">${part.title}: ${info.words.length}語 / Level 1〜${info.levelCount}</div>
+                    <div class="category-desc">${part.title}: ${countLabel}</div>
                 </div>
                 <div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
             container.appendChild(card);
         });
+        if (container.children.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:12px;">カテゴリがありません</div>';
+        }
     }
 
     function openCategoryModal(categoryId) {
