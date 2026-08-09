@@ -457,7 +457,8 @@
     <div class="audio-unlock-box">
         <div style="font-size:2.2rem;">🎵</div>
         <div class="audio-unlock-title">タップして開始</div>
-        <div class="audio-unlock-sub">BGM「10℃」・効果音を有効にします</div>
+        <div class="audio-unlock-sub">BGM・効果音を有効にします</div>
+        <div class="audio-unlock-sub" style="margin-top:10px;font-size:0.65rem;opacity:0.8;">タップ後メニューが表示されます</div>
     </div>
 </div>
 
@@ -618,7 +619,7 @@
     const WORDS_PER_LEVEL = 20;
     const LEVELS_PER_EXAM = 5;
     const LEVEL_CLEARS_PER_WORD = 2;
-    const DEFAULT_BGM = 'data/10℃.mp3';
+    const DEFAULT_BGM = 'data/bgm.mp3';
     const SPEED_PRESETS = { slow: 0.308, normal: 0.495, fast: 0.77 };
 
     const LANG_META = {
@@ -790,20 +791,21 @@
     }
 
     function unlockAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        initDefaultBGM();
-        customAudio.volume = bgmVol;
-        if (!customAudio.src) {
-            playSynthBGM();
+        hideAudioOverlay();
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            initDefaultBGM();
+            customAudio.volume = bgmVol;
+            if (customAudio.src) {
+                customAudio.play().then(() => { bgmStarted = true; }).catch(() => { bgmStarted = true; });
+            } else {
+                playSynthBGM();
+                bgmStarted = true;
+            }
+        } catch (e) {
             bgmStarted = true;
-            hideAudioOverlay();
-            return Promise.resolve();
         }
-        return customAudio.play().then(() => {
-            bgmStarted = true;
-            hideAudioOverlay();
-        }).catch(() => {});
     }
 
     function initAudioOnFirstTouch() { unlockAudio(); }
@@ -1736,13 +1738,9 @@
         updateMenuUI();
 
         const overlay = document.getElementById('audio-unlock-overlay');
-        const startAudio = (e) => {
-            if (e.type === 'touchstart') e.preventDefault();
-            unlockAudio();
-        };
+        const startAudio = () => unlockAudio();
         overlay?.addEventListener('click', startAudio);
-        overlay?.addEventListener('touchstart', startAudio, { passive: false });
-        document.body.addEventListener('touchstart', () => unlockAudio(), { passive: true });
+        overlay?.addEventListener('touchstart', (e) => { e.preventDefault(); startAudio(); }, { passive: false });
     }
 
     bootApp();
