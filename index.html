@@ -148,6 +148,42 @@
         .category-desc { font-size: 0.72rem; color: #a78bfa; margin-top: 3px; }
         .stage-btn.review-btn { border-color: #f97316; background: rgba(249, 115, 22, 0.15); }
         .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
+        .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-card {
+            background: rgba(30, 15, 60, 0.85);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: 14px; padding: 14px 10px; text-align: center;
+        }
+        .stat-card.highlight {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.2));
+            border-color: rgba(236, 72, 153, 0.5);
+        }
+        .stat-value {
+            font-size: 1.8rem; font-weight: 900; color: #fbbf24;
+            line-height: 1.1; margin-bottom: 4px;
+        }
+        .stat-label { font-size: 0.72rem; color: #c4b5fd; font-weight: 700; }
+        .stats-date { font-size: 0.75rem; color: #a78bfa; margin-bottom: 12px; text-align: center; }
+        .stats-quote {
+            background: rgba(20, 12, 40, 0.8);
+            border-left: 4px solid #f472b6;
+            border-radius: 12px; padding: 14px;
+            margin-bottom: 12px; line-height: 1.55;
+        }
+        .stats-quote-text { font-size: 0.88rem; color: #f3e8ff; font-weight: 700; }
+        .stats-quote-author { font-size: 0.68rem; color: #a78bfa; margin-top: 6px; text-align: right; }
+        .stats-streak {
+            text-align: center; font-size: 0.95rem; font-weight: 900;
+            color: #fb923c; padding: 10px;
+            background: rgba(249, 115, 22, 0.12); border-radius: 12px;
+        }
+        .stats-streak-sub { font-size: 0.68rem; color: #a78bfa; font-weight: 700; margin-top: 4px; }
 
         .modal-overlay {
             position: absolute; inset: 0;
@@ -231,23 +267,26 @@
         }
         .game-field.jackpot-pulse { animation: jackpotPulse 0.45s ease; }
         @keyframes jackpotPulse {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.35); }
+            0%, 100% { box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.2); }
+            50% { box-shadow: inset 0 0 90px rgba(251, 191, 36, 0.45), 0 0 35px rgba(236, 72, 153, 0.4); }
         }
 
-        /* プレイ中オーバーレイVFX */
+        /* プレイ中オーバーレイVFX（単語より下に配置） */
         .game-fx-layer {
             position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden;
+        }
+        .game-words-layer {
+            position: absolute; inset: 0; pointer-events: none; z-index: 12; overflow: hidden;
         }
         .game-fx-video {
             position: absolute; inset: -8%;
             width: 116%; height: 116%;
             object-fit: cover;
             mix-blend-mode: screen;
-            opacity: 0.38;
+            opacity: 0.28;
             animation: fxSway 8s ease-in-out infinite alternate;
         }
-        .game-fx-video.intense { opacity: 0.72; animation-duration: 5s; }
+        .game-fx-video.intense { opacity: 0.48; animation-duration: 5s; }
         @keyframes fxSway {
             0% { transform: translate(-4%, -2%) scale(1.06) rotate(-1.2deg); }
             50% { transform: translate(1%, 2%) scale(1.1) rotate(0.4deg); }
@@ -255,11 +294,12 @@
         }
         .game-shimmer {
             position: absolute; inset: 0;
-            background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.09) 50%, transparent 62%);
+            background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.06) 50%, transparent 62%);
             background-size: 280% 100%;
             animation: shimmerSweep 4s ease-in-out infinite;
             mix-blend-mode: overlay;
             z-index: 4;
+            opacity: 0.6;
         }
         @keyframes shimmerSweep {
             0% { background-position: 220% 0; opacity: 0.5; }
@@ -294,16 +334,19 @@
         }
 
         .falling-word {
-            position: absolute; width: 46%; padding: 11px 6px;
-            background: #fffef8;
-            border: 3px solid #92400e;
+            position: absolute; width: 46%; padding: 12px 8px;
+            background: #ffffff;
+            border: 3px solid #78350f;
             border-radius: 12px; text-align: center;
-            font-size: 1.1rem; font-weight: 900; color: #0a0414;
-            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.08);
+            font-size: 1.15rem; font-weight: 900; color: #000000;
+            box-shadow: 0 4px 0 #78350f, 0 8px 24px rgba(0,0,0,0.55);
             will-change: transform, top;
-            line-height: 1.3;
+            line-height: 1.35;
             letter-spacing: 0.02em;
+            z-index: 12;
+            isolation: isolate;
+            mix-blend-mode: normal;
+            -webkit-font-smoothing: antialiased;
         }
         .falling-word.spawn-pop {
             animation: spawnPop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
@@ -314,8 +357,9 @@
             100% { transform: scale(1); opacity: 1; }
         }
         .falling-word.active {
-            border-color: #fbbf24;
-            box-shadow: 0 0 22px rgba(251, 191, 36, 0.75), 0 0 40px rgba(236, 72, 153, 0.3);
+            border-color: #d97706;
+            background: #fffbeb;
+            box-shadow: 0 4px 0 #d97706, 0 0 20px rgba(251, 191, 36, 0.6);
         }
         .falling-word.bound {
             animation: wordBound 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
@@ -533,6 +577,9 @@
         <div class="category-list">
             <div id="category-list-container" class="category-list-primary"></div>
 
+            <button id="today-stats-btn" class="stage-btn stats-btn" onclick="openTodayStatsModal()">
+                <span id="today-stats-btn-text">📊 今日の成績</span><span>▶</span>
+            </button>
             <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="startReviewStage()">
                 <span id="review-btn-text">🔥 弱点・復習 (0件)</span><span>▶</span>
             </button>
@@ -560,6 +607,49 @@
         </div>
         <div class="modal-breadcrumb" id="level-modal-breadcrumb"></div>
         <div class="level-grid" id="level-grid"></div>
+    </div>
+
+    <!-- 今日の成績 -->
+    <div id="today-stats-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">📊 今日の成績</div>
+            <button class="close-btn" onclick="closeTodayStatsModal()">✕</button>
+        </div>
+        <div class="stats-date" id="stats-date-label"></div>
+        <div class="stats-grid">
+            <div class="stat-card highlight">
+                <div class="stat-value" id="stat-words-seen">0</div>
+                <div class="stat-label">今日見た単語</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-correct">0</div>
+                <div class="stat-label">正解数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-accuracy">—</div>
+                <div class="stat-label">正解率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-max-combo">0</div>
+                <div class="stat-label">最高コンボ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-clears">0</div>
+                <div class="stat-label">クリアしたステージ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-score">0</div>
+                <div class="stat-label">獲得スコア</div>
+            </div>
+        </div>
+        <div class="stats-quote">
+            <div class="stats-quote-text" id="stats-quote-text"></div>
+            <div class="stats-quote-author" id="stats-quote-author"></div>
+        </div>
+        <div class="stats-streak">
+            <span id="stats-streak-main">🔥 連続学習 0日目</span>
+            <div class="stats-streak-sub" id="stats-streak-sub">最高記録: 0日</div>
+        </div>
     </div>
 
     <!-- 覚えた単語リスト -->
@@ -594,6 +684,7 @@
                 <div class="game-shimmer"></div>
                 <div id="vignette-pulse" class="vignette-pulse"></div>
             </div>
+            <div class="game-words-layer" id="game-words-layer"></div>
             <canvas id="particle-canvas"></canvas>
             <div class="lane-line"></div>
             <div class="dead-line"></div>
@@ -643,11 +734,29 @@
     };
     let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv' };
     let bgmFileReady = false;
-    const SPEED_PRESETS = { slow: 0.308, normal: 0.495, fast: 0.77 };
+    const SPEED_PRESETS = { slow: 0.37, normal: 0.594, fast: 0.924 };
+
+    const MOTIVATIONAL_QUOTES = [
+        { text: '小さな一歩の積み重ねが、いちばん強い。', author: '' },
+        { text: 'Was heute wichtig ist, ist der Anfang.', author: '今日大切なのは、始めること。' },
+        { text: 'Übung macht den Meister.', author: '習うより慣れろ。' },
+        { text: 'The expert in anything was once a beginner.', author: 'どんな達人も、最初は初心者だった。' },
+        { text: '毎日5分でも、続ける人が勝つ。', author: '' },
+        { text: '間違えた単語こそ、伸びしろ。', author: '' },
+        { text: 'Wer nicht wagt, der nicht gewinnt.', author: 'チャレンジしない者に、勝利はない。' },
+        { text: '復習は、記憶を友だちにする作業。', author: '' },
+        { text: 'Progress, not perfection.', author: '完璧より、前進。' },
+        { text: '今日覚えた1語が、明日の自信になる。', author: '' },
+        { text: 'Es ist noch kein Meister vom Himmel gefallen.', author: '達人も最初から達人ではない。' },
+        { text: 'コンボが切れても、またつなげばいい。', author: '' },
+        { text: 'Language is the road map of a culture.', author: 'Rita Mae Brown' },
+        { text: '苦手リストは、弱点じゃなく攻略リスト。', author: '' },
+        { text: 'One language sets you in a corridor for life.', author: 'Frank Smith' }
+    ];
 
     const LANG_META = {
-        de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語学習', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
-        en: { title: 'ENGLISH HAMARU', subtitle: '英語 構文学習', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
+        de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語学習', label: 'ドイツ語', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
+        en: { title: 'ENGLISH HAMARU', subtitle: '英語 構文学習', label: '英語', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
     };
 
     const ALL_CATEGORIES = {
@@ -702,6 +811,8 @@
     let bgmStarted = false;
     let useUploadedBgm = false;
     let bgmSuspendedByHide = false;
+    let dailyStats = { date: '', wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
+    let studyStreak = { lastDate: '', current: 0, best: 0 };
 
     function storageKey(name) { return `hamaru_${studyLang}_${name}`; }
     function levelKey(cat, part, lvl) { return `${studyLang}_${cat}_${part}_${lvl}`; }
@@ -721,12 +832,135 @@
         masteredPool = JSON.parse(localStorage.getItem(storageKey('mastered_pool')) || '[]');
         levelStats = JSON.parse(localStorage.getItem(storageKey('level_stats')) || '{}');
         customWordData = JSON.parse(localStorage.getItem(storageKey('custom_words')) || '{}');
+        loadDailyStats();
+    }
+
+    function getTodayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function emptyDailyStats() {
+        return { date: getTodayKey(), wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
+    }
+
+    function loadDailyStats() {
+        const today = getTodayKey();
+        const saved = JSON.parse(localStorage.getItem(storageKey('daily_stats')) || 'null');
+        dailyStats = (saved && saved.date === today) ? saved : emptyDailyStats();
+        studyStreak = JSON.parse(localStorage.getItem('hamaru_study_streak') || '{"lastDate":"","current":0,"best":0}');
+        if (studyStreak.lastDate && studyStreak.lastDate !== today) {
+            const last = new Date(studyStreak.lastDate + 'T12:00:00');
+            const now = new Date(today + 'T12:00:00');
+            const diffDays = Math.round((now - last) / 86400000);
+            if (diffDays > 1) studyStreak.current = 0;
+        }
+    }
+
+    function saveDailyStats() {
+        localStorage.setItem(storageKey('daily_stats'), JSON.stringify(dailyStats));
+        localStorage.setItem('hamaru_study_streak', JSON.stringify(studyStreak));
+    }
+
+    function touchStudyStreak() {
+        const today = getTodayKey();
+        if (studyStreak.lastDate === today) return;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        studyStreak.current = (studyStreak.lastDate === yKey) ? studyStreak.current + 1 : 1;
+        studyStreak.best = Math.max(studyStreak.best, studyStreak.current);
+        studyStreak.lastDate = today;
+        saveDailyStats();
+    }
+
+    function recordDailyWordSeen(de) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        if (!dailyStats.wordsSeen.includes(de)) {
+            dailyStats.wordsSeen.push(de);
+            touchStudyStreak();
+            saveDailyStats();
+        }
+    }
+
+    function recordDailyAnswer(isCorrect, comboNow) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        if (isCorrect) dailyStats.correct++;
+        else dailyStats.wrong++;
+        if (comboNow > dailyStats.maxCombo) dailyStats.maxCombo = comboNow;
+        touchStudyStreak();
+        saveDailyStats();
+    }
+
+    function recordDailySessionClear(sessionScore) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        dailyStats.sessionsCleared++;
+        dailyStats.totalScore += sessionScore;
+        touchStudyStreak();
+        saveDailyStats();
+    }
+
+    function getYesterdayKey() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getStreakDisplayText() {
+        const today = getTodayKey();
+        if (studyStreak.lastDate === today) return `🔥 連続学習 ${studyStreak.current}日目`;
+        if (studyStreak.lastDate === getYesterdayKey() && studyStreak.current > 0) {
+            return `🔥 ${studyStreak.current}日連続（今日プレイで更新！）`;
+        }
+        return '🔥 今日から連続記録スタート！';
+    }
+
+    function formatStatsDate() {
+        const d = new Date();
+        const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        return `${d.getMonth() + 1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+    }
+
+    function getRandomQuote() {
+        const dayIndex = new Date().getDate() % MOTIVATIONAL_QUOTES.length;
+        const mix = (dayIndex + dailyStats.correct) % MOTIVATIONAL_QUOTES.length;
+        return MOTIVATIONAL_QUOTES[mix];
+    }
+
+    function updateTodayStatsButton() {
+        const btn = document.getElementById('today-stats-btn-text');
+        if (!btn) return;
+        const seen = dailyStats.wordsSeen?.length || 0;
+        btn.innerText = seen > 0 ? `📊 今日の成績（${seen}語）` : '📊 今日の成績';
+    }
+
+    function openTodayStatsModal() {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        document.getElementById('stats-date-label').innerText = `${formatStatsDate()} · ${LANG_META[studyLang].label}`;
+        document.getElementById('stat-words-seen').innerText = dailyStats.wordsSeen.length;
+        document.getElementById('stat-correct').innerText = dailyStats.correct;
+        const total = dailyStats.correct + dailyStats.wrong;
+        document.getElementById('stat-accuracy').innerText = total > 0 ? `${Math.round(dailyStats.correct / total * 100)}%` : '—';
+        document.getElementById('stat-max-combo').innerText = dailyStats.maxCombo;
+        document.getElementById('stat-clears').innerText = dailyStats.sessionsCleared;
+        document.getElementById('stat-score').innerText = dailyStats.totalScore.toLocaleString();
+        const quote = getRandomQuote();
+        document.getElementById('stats-quote-text').innerText = `「${quote.text}」`;
+        document.getElementById('stats-quote-author').innerText = quote.author || '';
+        document.getElementById('stats-streak-main').innerText = getStreakDisplayText();
+        document.getElementById('stats-streak-sub').innerText = `最高記録: ${studyStreak.best}日`;
+        document.getElementById('today-stats-modal').classList.remove('hidden');
+    }
+
+    function closeTodayStatsModal() {
+        document.getElementById('today-stats-modal').classList.add('hidden');
     }
 
     function closeAllModals() {
         document.getElementById('part-modal')?.classList.add('hidden');
         document.getElementById('level-modal')?.classList.add('hidden');
         document.getElementById('mastered-modal')?.classList.add('hidden');
+        document.getElementById('today-stats-modal')?.classList.add('hidden');
     }
 
     function toggleSettingsPanel() {
@@ -1069,6 +1303,7 @@
         if (container.children.length === 0) {
             container.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:12px;">カテゴリがありません</div>';
         }
+        updateTodayStatsButton();
     }
 
     function openCategoryModal(categoryId) {
@@ -1204,7 +1439,7 @@
         const vignette = document.getElementById('vignette-pulse');
         const intensity = Math.min(combo * 0.04, 0.8);
         if (video) {
-            video.style.opacity = 0.32 + intensity * 0.5;
+            video.style.opacity = 0.22 + intensity * 0.35;
             video.classList.toggle('intense', combo >= 8);
         }
         field?.classList.toggle('combo-glow', combo >= 5);
@@ -1363,7 +1598,8 @@
         document.getElementById('left-options').innerHTML = '';
         document.getElementById('right-options').innerHTML = '';
         const field = document.getElementById('game-field');
-        field.querySelectorAll('.falling-word, .combo-banner').forEach(e => e.remove());
+        const wordsLayer = document.getElementById('game-words-layer');
+        wordsLayer?.querySelectorAll('.falling-word, .combo-banner').forEach(e => e.remove());
 
         const canvas = document.getElementById('particle-canvas');
         canvas.width = field.clientWidth;
@@ -1432,7 +1668,8 @@
         const el = document.createElement('div');
         el.className = `falling-word lane-${lane} spawn-pop`;
         el.innerText = getPromptText(wordData);
-        document.getElementById('game-field').appendChild(el);
+        document.getElementById('game-words-layer').appendChild(el);
+        recordDailyWordSeen(wordData.de);
 
         const item = { data: wordData, el, y: -8, lane, velocity: dropSpeed * 0.35, spawnTime: Date.now() };
         activeWords.push(item);
@@ -1494,6 +1731,7 @@
             target.data.currentClears++;
             solvedCount++;
             recordSessionStat(target.data.de, true, timeTaken);
+            recordDailyAnswer(true, combo);
 
             const rect = target.el.getBoundingClientRect();
             const fieldRect = document.getElementById('game-field').getBoundingClientRect();
@@ -1524,6 +1762,7 @@
             setTimeout(() => removeWord(target), 320);
         } else {
             handleMistake(target.data);
+            recordDailyAnswer(false, 0);
             target.el.classList.remove('shake');
             void target.el.offsetWidth;
             target.el.classList.add('shake');
@@ -1532,7 +1771,7 @@
     }
 
     function showComboBanner(n) {
-        const field = document.getElementById('game-field');
+        const field = document.getElementById('game-words-layer');
         const banner = document.createElement('div');
         banner.className = 'combo-banner';
         banner.innerText = `${n} COMBO!`;
@@ -1647,6 +1886,7 @@
             levelStats[levelKey(currentCategory, currentPart, currentSessionId)] = { cleared: true, stars };
             saveData();
         }
+        if (isClear) recordDailySessionClear(score);
 
         const titleEl = document.getElementById('result-title');
         titleEl.innerText = isClear ? 'STAGE CLEAR!' : 'GAME OVER';
