@@ -955,23 +955,32 @@
     function openLevelModal(categoryId, partId) {
         currentCategory = categoryId;
         currentPart = partId;
-        const { words, levelCount } = rebuildPartData(categoryId, partId);
-        const cat = ALL_CATEGORIES[categoryId];
-        const part = cat.parts[partId];
-        document.getElementById('level-modal-title').innerText = `${part.title} — Level選択`;
-        document.getElementById('level-modal-breadcrumb').innerText = `${cat.title} › ${part.title} › ${words.length}語`;
-        buildLevelGridUI(levelCount, words.length);
-        document.getElementById('level-modal').classList.remove('hidden');
+        ensureWordDataLoaded().then(() => {
+            const { words, levelCount } = rebuildPartData(categoryId, partId);
+            const cat = ALL_CATEGORIES[categoryId];
+            const part = cat.parts[partId];
+            document.getElementById('level-modal-title').innerText = `${part.title} — Level選択`;
+            document.getElementById('level-modal-breadcrumb').innerText = `${cat.title} › ${part.title} › ${words.length}語`;
+            buildLevelGridUI(levelCount, words.length);
+            document.getElementById('level-modal').classList.remove('hidden');
+        });
     }
     function closeLevelModal() { document.getElementById('level-modal').classList.add('hidden'); }
 
     function buildLevelGridUI(levelCount, totalWords) {
         const grid = document.getElementById('level-grid');
         grid.innerHTML = '';
+        if (totalWords === 0) {
+            grid.innerHTML = `<div style="grid-column:span 2;text-align:center;color:#fca5a5;padding:20px;line-height:1.6;">
+                単語データが読み込めていません。<br>
+                <span style="font-size:0.75rem;color:#a78bfa;">GitHubに <strong>words-toefl-part1.js</strong> と <strong>data/toefl-part1.csv</strong> があるか確認してください。</span>
+            </div>`;
+            return;
+        }
         for (let i = 1; i <= levelCount; i++) {
             const key = levelKey(currentCategory, currentPart, i);
             const stat = levelStats[key] || { cleared: false, stars: 0 };
-            const wordCount = stagesData[i]?.length || WORDS_PER_LEVEL;
+            const wordCount = stagesData[i]?.length ?? 0;
             const card = document.createElement('div');
             card.className = `level-card ${stat.cleared ? 'cleared' : ''}`;
             card.onclick = () => { closeLevelModal(); startLevelStage(i); };
@@ -1131,7 +1140,13 @@
         suddenDeath = false;
         maxDamageAllowed = 100;
         rebuildPartData(currentCategory, currentPart);
-        let pool = filterNonMastered(stagesData[stageNum] || []);
+        const stageWords = stagesData[stageNum] || [];
+        if (stageWords.length === 0) {
+            alert('単語データが読み込めていません。ページを再読み込みするか、ファイルのアップロードを確認してください。');
+            return;
+        }
+        let pool = filterNonMastered(stageWords);
+        if (pool.length === 0) pool = stageWords;
         initSessionWords(pool, 2);
         initGame();
     }
@@ -1584,10 +1599,39 @@
             if (!row || row.length < 2) continue;
             const de = String(row[0] ?? '').trim();
             const jp = String(row[1] ?? '').trim();
-            if (!de || !jp || de.toLowerCase() === 'deutsch' || de.toLowerCase() === 'german') continue;
+            const skipHeaders = ['deutsch', 'german', '英語', 'english', '日本語', 'japanese'];
+            if (!de || !jp || skipHeaders.includes(de.toLowerCase()) || skipHeaders.includes(jp.toLowerCase())) continue;
             words.push({ de, jp });
         }
         return words;
+    }
+
+    function parseCsvText(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        return parseWordRows(lines.map(l => {
+            const idx = l.indexOf(',');
+            return idx >= 0 ? [l.slice(0, idx), l.slice(idx + 1)] : [l];
+        }));
+    }
+
+    async function fetchCsvWords(path) {
+        try {
+            const res = await fetch(path);
+            if (!res.ok) return [];
+            return parseCsvText(await res.text());
+        } catch (e) {
+            console.warn('CSV読込失敗:', path, e);
+            return [];
+        }
+    }
+
+    async function ensureWordDataLoaded() {
+        if (!window.TOEFL_PART1_WORDS?.length) {
+            window.TOEFL_PART1_WORDS = await fetchCsvWords('data/toefl-part1.csv');
+        }
+        if (!window.ENGLISH_GRAMMAR_PART1_WORDS?.length) {
+            window.ENGLISH_GRAMMAR_PART1_WORDS = await fetchCsvWords('data/english-grammar-part1.csv');
+        }
     }
 
     function importWordList(input) {
@@ -1636,10 +1680,15 @@
         input.value = '';
     }
 
-    loadLangData();
-    if (studyLang === 'en') currentCategory = 'grammar';
-    updateLangUI();
-    updateMenuUI();
+    async function bootApp() {
+        loadLangData();
+        if (studyLang === 'en') currentCategory = 'grammar';
+        await ensureWordDataLoaded();
+        updateLangUI();
+        updateMenuUI();
+    }
+
+    bootApp();
 </script>
 </body>
 </html>
