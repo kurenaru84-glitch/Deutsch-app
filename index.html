@@ -423,12 +423,43 @@
         .action-btn.secondary { background: rgba(30, 15, 60, 0.9); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); }
 
         .import-status { font-size: 0.68rem; color: #6ee7b7; text-align: right; }
+
+        /* スマホBGM解除オーバーレイ */
+        #audio-unlock-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(13, 2, 33, 0.92);
+            backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #audio-unlock-overlay.hidden { display: none !important; }
+        .audio-unlock-box {
+            text-align: center; padding: 28px 32px;
+            background: linear-gradient(145deg, rgba(88, 28, 135, 0.6), rgba(30, 15, 60, 0.9));
+            border: 2px solid rgba(168, 85, 247, 0.6);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
+            animation: unlockPulse 2s ease-in-out infinite;
+        }
+        @keyframes unlockPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .audio-unlock-title { font-size: 1.3rem; font-weight: 900; color: #e9d5ff; margin-top: 8px; }
+        .audio-unlock-sub { font-size: 0.75rem; color: #a78bfa; margin-top: 6px; }
     </style>
 </head>
-<body onclick="initAudioOnFirstTouch()">
+<body>
 
 <div id="bg-aurora"></div>
 <div id="bg-glow"></div>
+
+<div id="audio-unlock-overlay">
+    <div class="audio-unlock-box">
+        <div style="font-size:2.2rem;">🎵</div>
+        <div class="audio-unlock-title">タップして開始</div>
+        <div class="audio-unlock-sub">BGM「10℃」・効果音を有効にします</div>
+    </div>
+</div>
 
 <div id="game-container">
     <div id="flash" class="flash-overlay"></div>
@@ -586,6 +617,7 @@
 <script>
     const WORDS_PER_LEVEL = 20;
     const LEVELS_PER_EXAM = 5;
+    const LEVEL_CLEARS_PER_WORD = 2;
     const DEFAULT_BGM = 'data/10℃.mp3';
     const SPEED_PRESETS = { slow: 0.308, normal: 0.495, fast: 0.77 };
 
@@ -641,6 +673,7 @@
     let audioCtx = null, synthBgmTimer = null;
     let customAudio = new Audio();
     customAudio.loop = true;
+    customAudio.preload = 'auto';
     let bgmVol = 0.3, seVol = 0.5;
     let bgmStarted = false;
     let useUploadedBgm = false;
@@ -752,20 +785,34 @@
         setMode(gameMode);
     }
 
-    function initAudioOnFirstTouch() {
+    function hideAudioOverlay() {
+        document.getElementById('audio-unlock-overlay')?.classList.add('hidden');
+    }
+
+    function unlockAudio() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        if (!bgmStarted) {
-            initDefaultBGM();
-            startBGM();
+        initDefaultBGM();
+        customAudio.volume = bgmVol;
+        if (!customAudio.src) {
+            playSynthBGM();
             bgmStarted = true;
+            hideAudioOverlay();
+            return Promise.resolve();
         }
+        return customAudio.play().then(() => {
+            bgmStarted = true;
+            hideAudioOverlay();
+        }).catch(() => {});
     }
+
+    function initAudioOnFirstTouch() { unlockAudio(); }
 
     function initDefaultBGM() {
         if (!useUploadedBgm) {
             customAudio.src = DEFAULT_BGM;
             customAudio.loop = true;
+            customAudio.load();
         }
     }
 
@@ -791,11 +838,8 @@
     }
     function stopSynthBGM() { if (synthBgmTimer) { clearInterval(synthBgmTimer); synthBgmTimer = null; } }
     function startBGM() {
-        initDefaultBGM();
-        if (customAudio.src) {
-            customAudio.volume = bgmVol;
-            if (customAudio.paused) customAudio.play().catch(() => {});
-        } else playSynthBGM();
+        if (bgmStarted && !customAudio.paused) return;
+        unlockAudio();
     }
     function stopBGM() {
         if (customAudio.src) customAudio.pause();
@@ -1147,7 +1191,7 @@
         }
         let pool = filterNonMastered(stageWords);
         if (pool.length === 0) pool = stageWords;
-        initSessionWords(pool, 2);
+        initSessionWords(pool, LEVEL_CLEARS_PER_WORD);
         initGame();
     }
 
@@ -1186,7 +1230,7 @@
         suddenDeath = false;
         maxDamageAllowed = 100;
         const pool = reviewPool.filter(w => !isMastered(w.de));
-        initSessionWords(pool.length ? pool : reviewPool, 2);
+        initSessionWords(pool.length ? pool : reviewPool, LEVEL_CLEARS_PER_WORD);
         initGame();
     }
 
@@ -1195,6 +1239,10 @@
         else if (currentSessionType === 'exam_range') startExamRangeStage(currentSessionId);
         else if (currentSessionType === 'exam_all') startExamAllStage();
         else if (currentSessionType === 'review') startReviewStage();
+    }
+
+    function isSessionComplete() {
+        return sessionWords.length > 0 && sessionWords.every(w => w.currentClears >= w.requiredClears);
     }
 
     function initSessionWords(rawList, clearsRequired) {
@@ -1224,6 +1272,7 @@
         canvas.height = field.clientHeight;
 
         updateUI();
+        unlockAudio();
         showScreen('screen-game');
         startGameFx();
         startBGM();
@@ -1239,7 +1288,7 @@
         if (isPaused) return;
 
         spawnTimer++;
-        if (spawnTimer > getSpawnInterval() && activeWords.length < 2) {
+        if (!isSessionComplete() && spawnTimer > getSpawnInterval() && activeWords.length < 2) {
             spawnNextWord();
             spawnTimer = 0;
         }
@@ -1257,18 +1306,15 @@
         }
 
         activeWords.forEach(w => w.el.classList.add('active'));
-        if (activeWords.length === 0) {
-            const allCleared = sessionWords.every(w => w.currentClears >= w.requiredClears);
-            if (allCleared) endGame(true);
+        if (isSessionComplete() && activeWords.length === 0) {
+            endGame(true);
         }
         renderParticles();
     }
 
     function selectNextWord(excludeDes = []) {
-        let candidates = sessionWords.filter(w => w.currentClears < w.requiredClears && !excludeDes.includes(w.de));
-        if (!candidates.length) candidates = sessionWords.filter(w => !excludeDes.includes(w.de));
-        if (!candidates.length) candidates = masterPool.filter(w => !excludeDes.includes(w.de));
-        if (!candidates.length) return masterPool[0];
+        const candidates = sessionWords.filter(w => w.currentClears < w.requiredClears && !excludeDes.includes(w.de));
+        if (!candidates.length) return null;
 
         const totalWeight = candidates.reduce((s, w) => s + (w.weight || 10), 0);
         let rand = Math.random() * totalWeight;
@@ -1280,6 +1326,7 @@
     }
 
     function spawnNextWord() {
+        if (isSessionComplete()) return;
         const lane = nextSpawnLane;
         const wordData = selectNextWord(activeWords.map(a => a.data.de));
         if (!wordData) return;
@@ -1683,9 +1730,19 @@
     async function bootApp() {
         loadLangData();
         if (studyLang === 'en') currentCategory = 'grammar';
+        initDefaultBGM();
         await ensureWordDataLoaded();
         updateLangUI();
         updateMenuUI();
+
+        const overlay = document.getElementById('audio-unlock-overlay');
+        const startAudio = (e) => {
+            if (e.type === 'touchstart') e.preventDefault();
+            unlockAudio();
+        };
+        overlay?.addEventListener('click', startAudio);
+        overlay?.addEventListener('touchstart', startAudio, { passive: false });
+        document.body.addEventListener('touchstart', () => unlockAudio(), { passive: true });
     }
 
     bootApp();
