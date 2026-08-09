@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,8 +21,9 @@
             font-family: 'M PLUS Rounded 1c', 'Montserrat', sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: stretch;
+            min-height: 100dvh;
+            height: 100dvh;
             overflow: hidden;
             position: relative;
         }
@@ -48,14 +49,29 @@
 
         #game-container {
             width: 100%; max-width: 480px;
-            height: 100vh; max-height: 600px;
+            height: 100dvh;
             background: linear-gradient(165deg, #1a0a2e 0%, #12082a 45%, #0f172a 100%);
             display: flex; flex-direction: column;
             position: relative; overflow: hidden; z-index: 10;
-            box-shadow: 0 0 50px rgba(168, 85, 247, 0.35), 0 0 80px rgba(236, 72, 153, 0.15);
+            box-shadow: none;
+        }
+        @media (max-width: 499px) {
+            .screen {
+                padding: max(6px, env(safe-area-inset-top, 0px)) 12px max(6px, env(safe-area-inset-bottom, 0px)) 12px;
+            }
+            .title { font-size: 1.7rem; margin: 4px 0 2px; }
+            .subtitle { margin-bottom: 8px; font-size: 0.78rem; }
+            .mode-toggle-container { margin-bottom: 6px !important; }
+            .category-list { gap: 8px; }
+            .stage-btn { padding: 12px; }
         }
         @media (min-width: 500px) {
-            #game-container { height: 750px; border-radius: 24px; border: 2px solid rgba(168, 85, 247, 0.4); }
+            body { align-items: center; min-height: 100vh; height: 100vh; }
+            #game-container {
+                height: 750px; max-height: 750px;
+                border-radius: 24px; border: 2px solid rgba(168, 85, 247, 0.4);
+                box-shadow: 0 0 50px rgba(168, 85, 247, 0.35), 0 0 80px rgba(236, 72, 153, 0.15);
+            }
         }
         #game-container.combo-shake { animation: containerShake 0.18s ease; }
         @keyframes containerShake {
@@ -279,15 +295,15 @@
 
         .falling-word {
             position: absolute; width: 46%; padding: 11px 6px;
-            background: linear-gradient(145deg, rgba(255, 248, 235, 0.98), rgba(255, 235, 210, 0.96));
-            backdrop-filter: blur(4px);
-            border: 2px solid rgba(180, 120, 40, 0.85);
+            background: #fffef8;
+            border: 3px solid #92400e;
             border-radius: 12px; text-align: center;
-            font-size: 1.02rem; font-weight: 900; color: #1a0a2e;
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-            box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 0 10px rgba(251, 191, 36, 0.2);
+            font-size: 1.1rem; font-weight: 900; color: #0a0414;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.08);
             will-change: transform, top;
-            line-height: 1.25;
+            line-height: 1.3;
+            letter-spacing: 0.02em;
         }
         .falling-word.spawn-pop {
             animation: spawnPop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
@@ -685,6 +701,7 @@
     let bgmVol = 0.3, seVol = 0.5;
     let bgmStarted = false;
     let useUploadedBgm = false;
+    let bgmSuspendedByHide = false;
 
     function storageKey(name) { return `hamaru_${studyLang}_${name}`; }
     function levelKey(cat, part, lvl) { return `${studyLang}_${cat}_${part}_${lvl}`; }
@@ -893,6 +910,39 @@
         if (customAudio.src) customAudio.pause();
         stopSynthBGM();
     }
+
+    function resumeBGMPlayback() {
+        if (!bgmStarted || isPaused || bgmVol <= 0) return;
+        if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+        if (customAudio.src) {
+            customAudio.volume = bgmVol;
+            customAudio.play().catch(() => playSynthBGM());
+        } else if (!synthBgmTimer) {
+            playSynthBGM();
+        }
+    }
+
+    function handleAppHidden() {
+        if (!bgmStarted) return;
+        const audioPlaying = customAudio.src && !customAudio.paused;
+        if (!audioPlaying && !synthBgmTimer) return;
+        bgmSuspendedByHide = true;
+        stopBGM();
+        if (audioCtx?.state === 'running') audioCtx.suspend().catch(() => {});
+    }
+
+    function handleAppVisible() {
+        if (!bgmSuspendedByHide || document.hidden) return;
+        bgmSuspendedByHide = false;
+        if (isPaused) return;
+        resumeBGMPlayback();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        document.hidden ? handleAppHidden() : handleAppVisible();
+    });
+    window.addEventListener('pagehide', handleAppHidden);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) handleAppVisible(); });
     function loadCustomBGM(input) {
         if (input.files?.[0]) {
             useUploadedBgm = true;
