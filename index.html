@@ -798,43 +798,33 @@
     }
 
     async function resolveAssetUrl(candidates) {
-        for (const path of candidates) {
-            try {
-                const res = await fetch(path, { method: 'HEAD' });
-                if (res.ok) return path;
-            } catch (e) {}
-        }
-        return candidates[0];
-    }
-
-    function probeAudioUrl(path) {
-        return new Promise(resolve => {
-            const test = new Audio();
-            const done = (ok) => { test.src = ''; resolve(ok ? path : null); };
-            test.preload = 'auto';
-            test.oncanplaythrough = () => done(true);
-            test.onerror = () => done(false);
-            setTimeout(() => done(false), 4000);
-            test.src = path;
-            test.load();
-        });
-    }
-
-    async function resolveBgmUrl() {
-        for (const path of ASSET_CANDIDATES.bgm) {
-            const found = await probeAudioUrl(path);
-            if (found) return found;
-        }
-        return ASSET_CANDIDATES.bgm[0];
+        const check = async () => {
+            for (const path of candidates) {
+                try {
+                    const res = await fetch(path, { method: 'HEAD' });
+                    if (res.ok) return path;
+                } catch (e) {}
+            }
+            return candidates[0];
+        };
+        return Promise.race([
+            check(),
+            new Promise(resolve => setTimeout(() => resolve(candidates[0]), 800))
+        ]);
     }
 
     async function resolveAllAssets() {
-        resolvedAssets.bgm = await resolveBgmUrl();
-        resolvedAssets.video = await resolveAssetUrl(ASSET_CANDIDATES.video);
-        resolvedAssets.toeflCsv = await resolveAssetUrl(ASSET_CANDIDATES.toeflCsv);
-        resolvedAssets.englishCsv = await resolveAssetUrl(ASSET_CANDIDATES.englishCsv);
-        const video = document.getElementById('fx-shooting-star');
-        if (video) video.src = resolvedAssets.video;
+        const [video, toeflCsv, englishCsv] = await Promise.all([
+            resolveAssetUrl(ASSET_CANDIDATES.video),
+            resolveAssetUrl(ASSET_CANDIDATES.toeflCsv),
+            resolveAssetUrl(ASSET_CANDIDATES.englishCsv)
+        ]);
+        resolvedAssets.bgm = ASSET_CANDIDATES.bgm[0];
+        resolvedAssets.video = video;
+        resolvedAssets.toeflCsv = toeflCsv;
+        resolvedAssets.englishCsv = englishCsv;
+        const videoEl = document.getElementById('fx-shooting-star');
+        if (videoEl) videoEl.src = resolvedAssets.video;
     }
 
     function initDefaultBGM() {
@@ -1788,15 +1778,19 @@
     async function bootApp() {
         loadLangData();
         if (studyLang === 'en') currentCategory = 'grammar';
-        await resolveAllAssets();
-        await ensureWordDataLoaded();
-        updateLangUI();
-        updateMenuUI();
 
         const overlay = document.getElementById('audio-unlock-overlay');
         const startAudio = () => unlockAudio();
         overlay?.addEventListener('click', startAudio);
         overlay?.addEventListener('touchstart', (e) => { e.preventDefault(); startAudio(); }, { passive: false });
+
+        updateLangUI();
+        updateMenuUI();
+
+        resolveAllAssets().then(async () => {
+            await ensureWordDataLoaded();
+            updateMenuUI();
+        });
     }
 
     bootApp();
