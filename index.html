@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a0a2e">
+
+    <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%E3%83%89%E3%82%A4%E3%83%84%E8%AA%9E%20HAMARU%22%2C%22short_name%22%3A%22%E3%83%89%E3%82%A4%E3%83%84%E8%AA%9E%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0a2e%22%2C%22theme_color%22%3A%22%231a0a2e%22%7D">
+
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+
+    <title>ドイツ語 HAMARU Style</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: #0d0221;
+            color: #fff;
+            font-family: 'M PLUS Rounded 1c', 'Montserrat', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            min-height: 100dvh;
+            height: 100dvh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* HAMARU風オーロラ背景 */
+        #bg-glow, #bg-aurora {
+            position: absolute; inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        #bg-glow { transition: background 0.35s ease, opacity 0.35s; }
+        #bg-aurora {
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 20%, rgba(168, 85, 247, 0.35), transparent 55%),
+                radial-gradient(ellipse 70% 45% at 80% 75%, rgba(236, 72, 153, 0.28), transparent 50%),
+                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(56, 189, 248, 0.2), transparent 55%);
+            animation: auroraShift 8s ease-in-out infinite alternate;
+        }
+        @keyframes auroraShift {
+            0% { filter: hue-rotate(0deg) brightness(1); transform: scale(1); }
+            100% { filter: hue-rotate(25deg) brightness(1.15); transform: scale(1.05); }
+        }
+
+        #game-container {
+            width: 100%; max-width: 480px;
+            height: 100dvh;
+            background: linear-gradient(165deg, #1a0a2e 0%, #12082a 45%, #0f172a 100%);
+            display: flex; flex-direction: column;
+            position: relative; overflow: hidden; z-index: 10;
+            box-shadow: none;
+        }
+        @media (max-width: 499px) {
+            .screen {
+                padding: max(6px, env(safe-area-inset-top, 0px)) 12px max(6px, env(safe-area-inset-bottom, 0px)) 12px;
+            }
+            .title { font-size: 1.7rem; margin: 4px 0 2px; }
+            .subtitle { margin-bottom: 8px; font-size: 0.78rem; }
+            .mode-toggle-container { margin-bottom: 6px !important; }
+            .category-list { gap: 8px; }
+            .stage-btn { padding: 12px; }
+        }
+        @media (min-width: 500px) {
+            body { align-items: center; min-height: 100vh; height: 100vh; }
+            #game-container {
+                height: 750px; max-height: 750px;
+                border-radius: 24px; border: 2px solid rgba(168, 85, 247, 0.4);
+                box-shadow: 0 0 50px rgba(168, 85, 247, 0.35), 0 0 80px rgba(236, 72, 153, 0.15);
+            }
+        }
+        #game-container.combo-shake { animation: containerShake 0.18s ease; }
+        @keyframes containerShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+
+        .screen {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            padding: 16px; z-index: 10;
+            background: transparent;
+        }
+        .hidden { display: none !important; }
+
+        .title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem; font-weight: 900; text-align: center;
+            background: linear-gradient(135deg, #f472b6, #a855f7, #38bdf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 8px 0 2px;
+            letter-spacing: 0.08em;
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.5));
+        }
+        .subtitle { text-align: center; color: #c4b5fd; margin-bottom: 12px; font-size: 0.82rem; font-weight: 700; }
+
+        .mode-toggle-container {
+            display: flex; background: rgba(30, 20, 50, 0.8);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: 14px; padding: 4px; margin-bottom: 10px;
+        }
+        .mode-btn {
+            flex: 1; padding: 8px; border: none; background: transparent;
+            color: #a78bfa; font-weight: 800; border-radius: 10px; cursor: pointer; transition: all 0.15s;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            color: #fff; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.45);
+        }
+
+        .settings-panel {
+            background: rgba(20, 12, 40, 0.75);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            border-radius: 14px; padding: 10px; margin-bottom: 8px;
+            display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .settings-panel.collapsed .setting-row:not(.settings-toggle-row) { display: none; }
+        .settings-toggle-row { cursor: pointer; font-weight: 800; color: #c4b5fd; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .setting-row input[type="range"] { width: 90px; accent-color: #a855f7; }
+        .setting-row input[type="file"] { font-size: 0.68rem; color: #c4b5fd; max-width: 160px; }
+        .speed-options { display: flex; gap: 4px; }
+        .speed-btn {
+            background: rgba(30, 20, 50, 0.9); border: 1px solid #6b21a8;
+            color: #c4b5fd; padding: 4px 7px; border-radius: 6px; font-size: 0.7rem; cursor: pointer;
+        }
+        .speed-btn.active { background: linear-gradient(135deg, #f59e0b, #f97316); color: #1a0a2e; font-weight: 900; border-color: transparent; }
+
+        .category-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px; flex-grow: 1; min-height: 0; }
+        .category-list-primary { flex-shrink: 0; }
+        .category-card, .stage-btn {
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(30, 15, 60, 0.8) 100%);
+            border: 2px solid rgba(168, 85, 247, 0.55);
+            border-radius: 16px; padding: 14px; color: #fff;
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.2);
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .category-card:active, .stage-btn:active { transform: scale(0.97); }
+        .category-title { font-size: 1.15rem; font-weight: 900; color: #e9d5ff; }
+        .category-desc { font-size: 0.72rem; color: #a78bfa; margin-top: 3px; }
+        .stage-btn.review-btn { border-color: #f97316; background: rgba(249, 115, 22, 0.15); }
+        .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
+        .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-card {
+            background: rgba(30, 15, 60, 0.85);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: 14px; padding: 14px 10px; text-align: center;
+        }
+        .stat-card.highlight {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.2));
+            border-color: rgba(236, 72, 153, 0.5);
+        }
+        .stat-value {
+            font-size: 1.8rem; font-weight: 900; color: #fbbf24;
+            line-height: 1.1; margin-bottom: 4px;
+        }
+        .stat-label { font-size: 0.72rem; color: #c4b5fd; font-weight: 700; }
+        .stats-date { font-size: 0.75rem; color: #a78bfa; margin-bottom: 12px; text-align: center; }
+        .stats-quote {
+            background: rgba(20, 12, 40, 0.8);
+            border-left: 4px solid #f472b6;
+            border-radius: 12px; padding: 14px;
+            margin-bottom: 12px; line-height: 1.55;
+        }
+        .stats-quote-text { font-size: 0.88rem; color: #f3e8ff; font-weight: 700; }
+        .stats-quote-author { font-size: 0.68rem; color: #a78bfa; margin-top: 6px; text-align: right; }
+        .stats-streak {
+            text-align: center; font-size: 0.95rem; font-weight: 900;
+            color: #fb923c; padding: 10px;
+            background: rgba(249, 115, 22, 0.12); border-radius: 12px;
+        }
+        .stats-streak-sub { font-size: 0.68rem; color: #a78bfa; font-weight: 700; margin-top: 4px; }
+
+        .modal-overlay {
+            position: absolute; inset: 0;
+            background: rgba(13, 2, 33, 0.96);
+            backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; padding: 16px; z-index: 50;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .modal-title { font-size: 1.15rem; font-weight: 900; color: #e9d5ff; }
+        .modal-breadcrumb { font-size: 0.7rem; color: #a78bfa; margin-bottom: 8px; }
+        .close-btn {
+            background: rgba(107, 33, 168, 0.6); border: none; color: #fff;
+            padding: 6px 12px; border-radius: 8px; font-weight: 800; cursor: pointer;
+        }
+        .level-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; overflow-y: auto; flex-grow: 1; padding-bottom: 8px; }
+        .level-card {
+            background: rgba(30, 15, 60, 0.85); border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: 12px; padding: 10px; text-align: center;
+            cursor: pointer; transition: all 0.1s;
+            display: flex; flex-direction: column; justify-content: center; gap: 3px;
+        }
+        .level-card:active { background: linear-gradient(135deg, #ec4899, #a855f7); color: #fff; transform: scale(0.96); }
+        .level-card.cleared { background: rgba(16, 185, 129, 0.15); border-color: #10b981; }
+        .level-card.exam-card { grid-column: span 2; background: rgba(88, 28, 135, 0.4); border-color: #c084fc; color: #f3e8ff; }
+        .level-card.exam-all-card { grid-column: span 2; background: rgba(127, 29, 29, 0.35); border-color: #f87171; color: #fecaca; }
+        .level-card .lvl-num { font-size: 0.95rem; font-weight: 900; }
+        .level-card .lvl-stars { color: #fbbf24; font-size: 0.78rem; }
+        .level-card .lvl-count { font-size: 0.68rem; color: #a78bfa; }
+
+        .word-list-modal { gap: 6px; }
+        .word-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px; border-radius: 10px; font-size: 0.78rem;
+            background: rgba(30, 15, 60, 0.7); border-left: 3px solid #10b981;
+        }
+        .word-list-item .remove-btn {
+            background: #475569; border: none; color: #fff;
+            padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; cursor: pointer;
+        }
+
+        /* ゲーム画面 */
+        .header-bar { display: flex; justify-content: space-between; align-items: center; height: 38px; z-index: 5; }
+        .hp-container {
+            width: 100px; height: 12px;
+            background: rgba(30, 15, 60, 0.8); border-radius: 8px; overflow: hidden;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+        .hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #f97316); transition: width 0.15s ease; }
+        .header-controls { display: flex; gap: 5px; }
+        .icon-btn {
+            background: rgba(30, 15, 60, 0.85); border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #f8fafc; padding: 4px 8px; border-radius: 8px;
+            font-size: 0.72rem; font-weight: 800; cursor: pointer;
+        }
+        .score-info { text-align: right; font-weight: 900; font-size: 0.85rem; }
+        #combo-count {
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #fbbf24, #f97316);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: transform 0.1s;
+        }
+        #combo-count.combo-pop { animation: comboPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.5); }
+        @keyframes comboPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.45); }
+            100% { transform: scale(1); }
+        }
+
+        .game-field {
+            flex-grow: 1; position: relative; border-radius: 18px;
+            margin: 6px 0; overflow: hidden;
+            border: 2px solid rgba(168, 85, 247, 0.35);
+            background: linear-gradient(180deg, #4c1d95 0%, #1e3a5f 35%, #065f46 100%);
+            box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.2);
+            transition: box-shadow 0.25s, border-color 0.25s;
+        }
+        .game-field.combo-glow {
+            border-color: rgba(251, 191, 36, 0.65);
+            box-shadow: inset 0 0 70px rgba(251, 191, 36, 0.3), 0 0 35px rgba(236, 72, 153, 0.45);
+        }
+        .game-field.jackpot-pulse { animation: jackpotPulse 0.45s ease; }
+        @keyframes jackpotPulse {
+            0%, 100% { box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.2); }
+            50% { box-shadow: inset 0 0 90px rgba(251, 191, 36, 0.45), 0 0 35px rgba(236, 72, 153, 0.4); }
+        }
+
+        /* プレイ中オーバーレイVFX（単語より下に配置） */
+        .game-fx-layer {
+            position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden;
+        }
+        .game-words-layer {
+            position: absolute; inset: 0; pointer-events: none; z-index: 12; overflow: hidden;
+        }
+        .game-fx-video {
+            position: absolute; inset: -8%;
+            width: 116%; height: 116%;
+            object-fit: cover;
+            mix-blend-mode: screen;
+            opacity: 0.28;
+            animation: fxSway 8s ease-in-out infinite alternate;
+        }
+        .game-fx-video.intense { opacity: 0.48; animation-duration: 5s; }
+        @keyframes fxSway {
+            0% { transform: translate(-4%, -2%) scale(1.06) rotate(-1.2deg); }
+            50% { transform: translate(1%, 2%) scale(1.1) rotate(0.4deg); }
+            100% { transform: translate(4%, -1%) scale(1.07) rotate(1.2deg); }
+        }
+        .game-shimmer {
+            position: absolute; inset: 0;
+            background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.06) 50%, transparent 62%);
+            background-size: 280% 100%;
+            animation: shimmerSweep 4s ease-in-out infinite;
+            mix-blend-mode: overlay;
+            z-index: 4;
+            opacity: 0.6;
+        }
+        @keyframes shimmerSweep {
+            0% { background-position: 220% 0; opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { background-position: -120% 0; opacity: 0.5; }
+        }
+        .fx-orb {
+            position: absolute; border-radius: 50%; pointer-events: none;
+            filter: blur(18px); z-index: 1;
+            animation: orbFloat 6s ease-in-out infinite alternate;
+        }
+        .fx-orb.a { width: 90px; height: 90px; background: rgba(168, 85, 247, 0.35); top: 10%; left: 5%; animation-delay: 0s; }
+        .fx-orb.b { width: 70px; height: 70px; background: rgba(236, 72, 153, 0.3); bottom: 15%; right: 8%; animation-delay: -2s; }
+        .fx-orb.c { width: 55px; height: 55px; background: rgba(56, 189, 248, 0.28); top: 45%; left: 40%; animation-delay: -4s; }
+        @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(12px, -18px) scale(1.15); }
+        }
+        .vignette-pulse {
+            position: absolute; inset: 0; pointer-events: none; z-index: 6;
+            box-shadow: inset 0 0 80px rgba(251, 191, 36, 0);
+            transition: box-shadow 0.2s;
+        }
+        .vignette-pulse.active {
+            box-shadow: inset 0 0 100px rgba(251, 191, 36, 0.25), inset 0 0 40px rgba(236, 72, 153, 0.2);
+        }
+        .lane-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(255,255,255,0.12); }
+        .dead-line {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, transparent, #ef4444, #f97316, #ef4444, transparent);
+            box-shadow: 0 0 15px #ef4444;
+        }
+
+        .falling-word {
+            position: absolute; width: 46%; padding: 12px 8px;
+            background: #ffffff;
+            border: 3px solid #78350f;
+            border-radius: 12px; text-align: center;
+            font-size: 1.15rem; font-weight: 900; color: #000000;
+            box-shadow: 0 4px 0 #78350f, 0 8px 24px rgba(0,0,0,0.55);
+            will-change: transform, top;
+            line-height: 1.35;
+            letter-spacing: 0.02em;
+            z-index: 12;
+            isolation: isolate;
+            mix-blend-mode: normal;
+            -webkit-font-smoothing: antialiased;
+        }
+        .falling-word.spawn-pop {
+            animation: spawnPop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
+        }
+        @keyframes spawnPop {
+            0% { transform: scale(0.3) translateY(-8px); opacity: 0; }
+            70% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .falling-word.active {
+            border-color: #d97706;
+            background: #fffbeb;
+            box-shadow: 0 4px 0 #d97706, 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+        .falling-word.bound {
+            animation: wordBound 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes wordBound {
+            0% { transform: scale(1); }
+            35% { transform: scale(1.3); color: #34d399; text-shadow: 0 0 25px rgba(52, 211, 153, 0.9); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        .falling-word.shake { animation: shake 0.18s ease; border-color: #ef4444 !important; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-7px); }
+            75% { transform: translateX(7px); }
+        }
+        .lane-0 { left: 2%; }
+        .lane-1 { right: 2%; }
+
+        .controls-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 210px; }
+        .side-column { display: grid; grid-template-rows: repeat(4, 1fr); gap: 5px; }
+        .opt-btn {
+            background: linear-gradient(145deg, rgba(40, 20, 70, 0.95), rgba(25, 12, 50, 0.95));
+            border: 2px solid rgba(168, 85, 247, 0.4);
+            color: #f3e8ff; font-size: 0.82rem; font-weight: 800;
+            border-radius: 10px; cursor: pointer;
+            transition: transform 0.05s, background 0.05s;
+            display: flex; align-items: center; justify-content: center;
+            padding: 2px 4px; text-align: center; position: relative; overflow: hidden;
+        }
+        .opt-btn:active {
+            transform: scale(0.93);
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            color: #fff; border-color: transparent;
+        }
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.55);
+            transform: scale(0); animation: rippleEffect 0.45s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleEffect { to { transform: scale(3.5); opacity: 0; } }
+
+        .score-popup {
+            position: fixed; font-weight: 900; font-size: 1.7rem;
+            color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.9), 0 0 30px rgba(236, 72, 153, 0.5);
+            pointer-events: none;
+            animation: floatUpScore 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            z-index: 200;
+        }
+        @keyframes floatUpScore {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            25% { transform: translateY(-18px) scale(1.25); opacity: 1; }
+            100% { transform: translateY(-55px) scale(1); opacity: 0; }
+        }
+        .combo-banner {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 2rem; font-weight: 900; color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.9);
+            pointer-events: none; z-index: 25;
+            animation: comboBanner 0.7s ease forwards;
+        }
+        @keyframes comboBanner {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -70%) scale(0.8); opacity: 0; }
+        }
+
+        .pause-overlay {
+            position: absolute; inset: 0;
+            background: rgba(13, 2, 33, 0.88); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; z-index: 30;
+        }
+        .pause-title { font-size: 1.8rem; font-weight: 900; color: #fbbf24; }
+
+        #particle-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 15; }
+        .flash-overlay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.08s; z-index: 20; }
+        .flash-overlay.damage { background: rgba(239, 68, 68, 0.4); opacity: 1; }
+        .flash-overlay.success { background: rgba(168, 85, 247, 0.3); opacity: 1; }
+
+        .result-title { font-size: 1.7rem; text-align: center; margin-top: 2px; font-weight: 900; }
+        .clear { color: #a855f7; text-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+        .failed { color: #ef4444; }
+        .ranking-box {
+            background: rgba(30, 15, 60, 0.7); border: 1px solid rgba(249, 115, 22, 0.5);
+            border-radius: 12px; padding: 8px 10px; margin-top: 5px;
+        }
+        .ranking-title { font-size: 0.75rem; font-weight: 800; color: #fb923c; margin-bottom: 4px; text-align: center; }
+        .ranking-list { display: flex; flex-direction: column; gap: 3px; font-size: 0.72rem; }
+        .ranking-item { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 2px; }
+
+        .review-container {
+            flex-grow: 1; overflow-y: auto; margin: 5px 0;
+            background: rgba(20, 12, 40, 0.6); border-radius: 12px; padding: 6px;
+            display: flex; flex-direction: column; gap: 5px;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+        }
+        .review-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 8px; border-radius: 8px; font-size: 0.75rem; gap: 6px;
+        }
+        .review-item.correct-item { background: rgba(16, 185, 129, 0.12); border-left: 3px solid #10b981; }
+        .review-item.wrong-item { background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; }
+        .review-item .word-text { flex: 1; min-width: 0; }
+        .status-btn-group { display: flex; gap: 4px; flex-shrink: 0; }
+        .status-select-btn {
+            border: none; color: #fff; padding: 4px 6px; border-radius: 6px;
+            font-size: 0.62rem; cursor: pointer; font-weight: 800;
+        }
+        .status-select-btn.review { background: #f97316; }
+        .status-select-btn.review.active { box-shadow: 0 0 8px rgba(249, 115, 22, 0.8); }
+        .status-select-btn.mastered { background: #10b981; }
+        .status-select-btn.mastered.active { box-shadow: 0 0 8px rgba(16, 185, 129, 0.8); }
+        .status-select-btn.inactive { background: #475569; opacity: 0.7; }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 4px; }
+        .action-btn {
+            flex: 1; background: linear-gradient(135deg, #ec4899, #a855f7);
+            color: #fff; border: none; padding: 10px;
+            font-size: 0.88rem; font-weight: 900; border-radius: 12px; cursor: pointer;
+        }
+        .action-btn.secondary { background: rgba(30, 15, 60, 0.9); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); }
+
+        .import-status { font-size: 0.68rem; color: #6ee7b7; text-align: right; }
+
+        /* スマホBGM解除オーバーレイ */
+        #audio-unlock-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(13, 2, 33, 0.92);
+            backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #audio-unlock-overlay.hidden { display: none !important; }
+        .audio-unlock-box {
+            text-align: center; padding: 28px 32px;
+            background: linear-gradient(145deg, rgba(88, 28, 135, 0.6), rgba(30, 15, 60, 0.9));
+            border: 2px solid rgba(168, 85, 247, 0.6);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
+            animation: unlockPulse 2s ease-in-out infinite;
+        }
+        @keyframes unlockPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .audio-unlock-title { font-size: 1.3rem; font-weight: 900; color: #e9d5ff; margin-top: 8px; }
+        .audio-unlock-sub { font-size: 0.75rem; color: #a78bfa; margin-top: 6px; }
+    </style>
+</head>
+<body>
+
+<div id="bg-aurora"></div>
+<div id="bg-glow"></div>
+
+<div id="audio-unlock-overlay">
+    <div class="audio-unlock-box">
+        <div style="font-size:2.2rem;">🎵</div>
+        <div class="audio-unlock-title">タップして開始</div>
+        <div class="audio-unlock-sub">BGM・効果音を有効にします</div>
+        <div class="audio-unlock-sub" style="margin-top:10px;font-size:0.65rem;opacity:0.8;">タップ後メニューが表示されます</div>
+    </div>
+</div>
+
+<div id="game-container">
+    <div id="flash" class="flash-overlay"></div>
+
+    <!-- メインメニュー -->
+    <div id="screen-select" class="screen">
+        <div class="mode-toggle-container" style="margin-bottom:8px;">
+            <button id="lang-de" class="mode-btn active" onclick="setStudyLang('de')">🇩🇪 ドイツ語</button>
+            <button id="lang-en" class="mode-btn" onclick="setStudyLang('en')">🇬🇧 英語</button>
+        </div>
+        <div id="app-title" class="title">DEUTSCH HAMARU</div>
+        <div id="app-subtitle" class="subtitle">ドイツ語 単語学習</div>
+
+        <div class="mode-toggle-container">
+            <button id="mode-jp-foreign" class="mode-btn active" onclick="setMode('jp-foreign')">日 ➔ 外国語</button>
+            <button id="mode-foreign-jp" class="mode-btn" onclick="setMode('foreign-jp')">外国語 ➔ 日</button>
+        </div>
+
+        <div id="settings-panel" class="settings-panel collapsed">
+            <div class="setting-row settings-toggle-row" onclick="toggleSettingsPanel()">
+                <span>⚙️ 設定（BGM・速度など）</span><span id="settings-toggle-icon">▼ 開く</span>
+            </div>
+            <div class="setting-row">
+                <span>📂 単語リスト:</span>
+                <input type="file" id="word-file" accept=".csv,.xlsx,.xls" onchange="importWordList(this)">
+            </div>
+            <div class="setting-row"><span></span><span id="import-status" class="import-status"></span></div>
+            <div class="setting-row">
+                <span>🎵 BGM:</span>
+                <span style="font-size:0.65rem;color:#a78bfa;">10℃（標準）</span>
+            </div>
+            <div class="setting-row">
+                <span>🎵 変更:</span>
+                <input type="file" id="bgm-file" accept="audio/*" onchange="loadCustomBGM(this)">
+            </div>
+            <div class="setting-row">
+                <span>🎵 BGM音量:</span>
+                <input type="range" id="bgm-volume" min="0" max="1" step="0.05" value="0.3" oninput="updateVolume()">
+            </div>
+            <div class="setting-row">
+                <span>🔔 SE音量:</span>
+                <input type="range" id="se-volume" min="0" max="1" step="0.05" value="0.5" oninput="updateVolume()">
+            </div>
+            <div class="setting-row">
+                <span>⚡ 速度:</span>
+                <div class="speed-options">
+                    <button class="speed-btn active" onclick="setSpeed('slow', this)">遅め</button>
+                    <button class="speed-btn" onclick="setSpeed('normal', this)">普通</button>
+                    <button class="speed-btn" onclick="setSpeed('fast', this)">速い</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="category-list">
+            <div id="category-list-container" class="category-list-primary"></div>
+
+            <button id="today-stats-btn" class="stage-btn stats-btn" onclick="openTodayStatsModal()">
+                <span id="today-stats-btn-text">📊 今日の成績</span><span>▶</span>
+            </button>
+            <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="startReviewStage()">
+                <span id="review-btn-text">🔥 弱点・復習 (0件)</span><span>▶</span>
+            </button>
+            <button id="mastered-list-btn" class="stage-btn mastered-btn" onclick="openMasteredModal()">
+                <span id="mastered-btn-text">✨ 完全に覚えた単語 (0件)</span><span>▶</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Part選択モーダル -->
+    <div id="part-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title" id="part-modal-title">TOEFL Part選択</div>
+            <button class="close-btn" onclick="closePartModal()">✕</button>
+        </div>
+        <div class="modal-breadcrumb" id="part-modal-breadcrumb"></div>
+        <div class="category-list" id="part-list"></div>
+    </div>
+
+    <!-- Level選択モーダル -->
+    <div id="level-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title" id="level-modal-title">Level選択</div>
+            <button class="close-btn" onclick="closeLevelModal()">✕</button>
+        </div>
+        <div class="modal-breadcrumb" id="level-modal-breadcrumb"></div>
+        <div class="level-grid" id="level-grid"></div>
+    </div>
+
+    <!-- 今日の成績 -->
+    <div id="today-stats-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">📊 今日の成績</div>
+            <button class="close-btn" onclick="closeTodayStatsModal()">✕</button>
+        </div>
+        <div class="stats-date" id="stats-date-label"></div>
+        <div class="stats-grid">
+            <div class="stat-card highlight">
+                <div class="stat-value" id="stat-words-seen">0</div>
+                <div class="stat-label">今日見た単語</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-correct">0</div>
+                <div class="stat-label">正解数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-accuracy">—</div>
+                <div class="stat-label">正解率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-max-combo">0</div>
+                <div class="stat-label">最高コンボ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-clears">0</div>
+                <div class="stat-label">クリアしたステージ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-score">0</div>
+                <div class="stat-label">獲得スコア</div>
+            </div>
+        </div>
+        <div class="stats-quote">
+            <div class="stats-quote-text" id="stats-quote-text"></div>
+            <div class="stats-quote-author" id="stats-quote-author"></div>
+        </div>
+        <div class="stats-streak">
+            <span id="stats-streak-main">🔥 連続学習 0日目</span>
+            <div class="stats-streak-sub" id="stats-streak-sub">最高記録: 0日</div>
+        </div>
+    </div>
+
+    <!-- 覚えた単語リスト -->
+    <div id="mastered-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">✨ 完全に覚えた単語</div>
+            <button class="close-btn" onclick="closeMasteredModal()">✕</button>
+        </div>
+        <div class="modal-breadcrumb">試験モード以外では出題されません</div>
+        <div class="category-list word-list-modal" id="mastered-list"></div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="screen-game" class="screen hidden">
+        <div class="header-bar">
+            <div class="hp-container"><div id="hp-bar" class="hp-bar"></div></div>
+            <div class="header-controls">
+                <button class="icon-btn" onclick="togglePause()">⏸</button>
+                <button class="icon-btn" onclick="quitGame()">↩</button>
+            </div>
+            <div class="score-info">
+                <span id="combo-count">0</span> COMBO<br>
+                <span id="progress-count" style="font-size:0.72rem; color:#a78bfa;">0/40</span>
+            </div>
+        </div>
+        <div class="game-field" id="game-field">
+            <div class="game-fx-layer">
+                <div class="fx-orb a"></div>
+                <div class="fx-orb b"></div>
+                <div class="fx-orb c"></div>
+                <video id="fx-shooting-star" class="game-fx-video" src="Shooting-star-effect.mp4" muted loop playsinline></video>
+                <div class="game-shimmer"></div>
+                <div id="vignette-pulse" class="vignette-pulse"></div>
+            </div>
+            <div class="game-words-layer" id="game-words-layer"></div>
+            <canvas id="particle-canvas"></canvas>
+            <div class="lane-line"></div>
+            <div class="dead-line"></div>
+            <div id="pause-overlay" class="pause-overlay hidden">
+                <div class="pause-title">PAUSED</div>
+                <button class="action-btn" style="width:160px;" onclick="togglePause()">再開</button>
+                <button class="action-btn" style="width:160px;background:#ef4444;" onclick="quitGame()">終了</button>
+            </div>
+        </div>
+        <div class="controls-wrapper">
+            <div class="side-column" id="left-options"></div>
+            <div class="side-column" id="right-options"></div>
+        </div>
+    </div>
+
+    <!-- リザルト -->
+    <div id="screen-result" class="screen hidden">
+        <div id="result-title" class="result-title">STAGE CLEAR!</div>
+        <div style="text-align:center;font-size:0.82rem;color:#fbbf24;margin-top:2px;">
+            SCORE: <span id="final-score">0</span> | MAX COMBO: <span id="max-combo">0</span>
+        </div>
+        <div class="ranking-box">
+            <div class="ranking-title">⚠️ 苦手単語 TOP 5</div>
+            <div class="ranking-list" id="ranking-list"></div>
+        </div>
+        <div style="font-size:0.78rem;font-weight:800;margin-top:5px;color:#c084fc;">振り返り — 復習 / 覚えた を設定</div>
+        <div class="review-container" id="review-container"></div>
+        <div class="btn-group">
+            <button class="action-btn secondary" onclick="repeatCurrentSession()">↺ もう一度</button>
+            <button class="action-btn" onclick="showSelectScreen()">メニューへ</button>
+        </div>
+    </div>
+</div>
+
+<script src="words-toefl-part1.js"></script>
+<script src="words-english-grammar-part1.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+    const WORDS_PER_LEVEL = 20;
+    const LEVELS_PER_EXAM = 5;
+    const LEVEL_CLEARS_PER_WORD = 2;
+    const ASSET_CANDIDATES = {
+        bgm: ['bgm.mp3', 'data/bgm.mp3', '10℃.mp3', 'data/10℃.mp3'],
+        video: ['Shooting-star-effect.mp4', 'data/Shooting-star-effect.mp4'],
+        toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
+        englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv']
+    };
+    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv' };
+    let bgmFileReady = false;
+    const SPEED_PRESETS = { slow: 0.37, normal: 0.594, fast: 0.924 };
+
+    const MOTIVATIONAL_QUOTES = [
+        { text: '小さな一歩の積み重ねが、いちばん強い。', author: '' },
+        { text: 'Was heute wichtig ist, ist der Anfang.', author: '今日大切なのは、始めること。' },
+        { text: 'Übung macht den Meister.', author: '習うより慣れろ。' },
+        { text: 'The expert in anything was once a beginner.', author: 'どんな達人も、最初は初心者だった。' },
+        { text: '毎日5分でも、続ける人が勝つ。', author: '' },
+        { text: '間違えた単語こそ、伸びしろ。', author: '' },
+        { text: 'Wer nicht wagt, der nicht gewinnt.', author: 'チャレンジしない者に、勝利はない。' },
+        { text: '復習は、記憶を友だちにする作業。', author: '' },
+        { text: 'Progress, not perfection.', author: '完璧より、前進。' },
+        { text: '今日覚えた1語が、明日の自信になる。', author: '' },
+        { text: 'Es ist noch kein Meister vom Himmel gefallen.', author: '達人も最初から達人ではない。' },
+        { text: 'コンボが切れても、またつなげばいい。', author: '' },
+        { text: 'Language is the road map of a culture.', author: 'Rita Mae Brown' },
+        { text: '苦手リストは、弱点じゃなく攻略リスト。', author: '' },
+        { text: 'One language sets you in a corridor for life.', author: 'Frank Smith' }
+    ];
+
+    const LANG_META = {
+        de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語学習', label: 'ドイツ語', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
+        en: { title: 'ENGLISH HAMARU', subtitle: '英語 構文学習', label: '英語', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
+    };
+
+    const ALL_CATEGORIES = {
+        toefl: {
+            id: 'toefl', title: 'TOEFL単語', icon: '📘', langs: ['de'],
+            parts: {
+                1: { id: 1, title: 'Part 1', desc: '単語 1〜660', defaultWords: () => window.TOEFL_PART1_WORDS || [] }
+            }
+        },
+        grammar: {
+            id: 'grammar', title: '構文', icon: '📝', langs: ['en'],
+            parts: {
+                1: { id: 1, title: 'Part 1', desc: '構文 1〜450', defaultWords: () => window.ENGLISH_GRAMMAR_PART1_WORDS || [] }
+            }
+        }
+    };
+
+    let studyLang = localStorage.getItem('hamaru_study_lang') || 'de';
+    let reviewPool = [];
+    let masteredPool = [];
+    let levelStats = {};
+    let customWordData = {};
+
+    let currentCategory = 'toefl';
+    let currentPart = 1;
+    let masterPool = [];
+    let stagesData = {};
+
+    let gameMode = 'jp-foreign';
+    let dropSpeed = SPEED_PRESETS.slow;
+    let currentSessionType = 'level';
+    let currentSessionId = 1;
+    let isPaused = false;
+    let suddenDeath = false;
+    let maxDamageAllowed = 100;
+    let currentMistakes = 0;
+    let isExamSession = false;
+
+    let sessionWords = [];
+    let activeWords = [];
+    let hp = 100, score = 0, combo = 0, maxCombo = 0, solvedCount = 0, requiredTotalClears = 40;
+    let gameInterval = null, spawnTimer = 0, nextSpawnLane = 1;
+    let sessionStats = {};
+    let particles = [];
+    let lastComboMilestone = 0;
+
+    let audioCtx = null, synthBgmTimer = null;
+    let customAudio = new Audio();
+    customAudio.loop = true;
+    customAudio.preload = 'auto';
+    let bgmVol = 0.3, seVol = 0.5;
+    let bgmStarted = false;
+    let useUploadedBgm = false;
+    let bgmSuspendedByHide = false;
+    let dailyStats = { date: '', wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
+    let studyStreak = { lastDate: '', current: 0, best: 0 };
+
+    function storageKey(name) { return `hamaru_${studyLang}_${name}`; }
+    function levelKey(cat, part, lvl) { return `${studyLang}_${cat}_${part}_${lvl}`; }
+
+    function loadLangData() {
+        if (studyLang === 'de' && !localStorage.getItem(storageKey('review_pool'))) {
+            const migrate = (oldKey, suffix) => {
+                const v = localStorage.getItem(oldKey);
+                if (v) localStorage.setItem(storageKey(suffix), v);
+            };
+            migrate('hamaru_review_pool', 'review_pool');
+            migrate('hamaru_mastered_pool', 'mastered_pool');
+            migrate('hamaru_level_stats', 'level_stats');
+            migrate('hamaru_custom_words', 'custom_words');
+        }
+        reviewPool = JSON.parse(localStorage.getItem(storageKey('review_pool')) || '[]');
+        masteredPool = JSON.parse(localStorage.getItem(storageKey('mastered_pool')) || '[]');
+        levelStats = JSON.parse(localStorage.getItem(storageKey('level_stats')) || '{}');
+        customWordData = JSON.parse(localStorage.getItem(storageKey('custom_words')) || '{}');
+        loadDailyStats();
+    }
+
+    function getTodayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function emptyDailyStats() {
+        return { date: getTodayKey(), wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
+    }
+
+    function loadDailyStats() {
+        const today = getTodayKey();
+        const saved = JSON.parse(localStorage.getItem(storageKey('daily_stats')) || 'null');
+        dailyStats = (saved && saved.date === today) ? saved : emptyDailyStats();
+        studyStreak = JSON.parse(localStorage.getItem('hamaru_study_streak') || '{"lastDate":"","current":0,"best":0}');
+        if (studyStreak.lastDate && studyStreak.lastDate !== today) {
+            const last = new Date(studyStreak.lastDate + 'T12:00:00');
+            const now = new Date(today + 'T12:00:00');
+            const diffDays = Math.round((now - last) / 86400000);
+            if (diffDays > 1) studyStreak.current = 0;
+        }
+    }
+
+    function saveDailyStats() {
+        localStorage.setItem(storageKey('daily_stats'), JSON.stringify(dailyStats));
+        localStorage.setItem('hamaru_study_streak', JSON.stringify(studyStreak));
+    }
+
+    function touchStudyStreak() {
+        const today = getTodayKey();
+        if (studyStreak.lastDate === today) return;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        studyStreak.current = (studyStreak.lastDate === yKey) ? studyStreak.current + 1 : 1;
+        studyStreak.best = Math.max(studyStreak.best, studyStreak.current);
+        studyStreak.lastDate = today;
+        saveDailyStats();
+    }
+
+    function recordDailyWordSeen(de) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        if (!dailyStats.wordsSeen.includes(de)) {
+            dailyStats.wordsSeen.push(de);
+            touchStudyStreak();
+            saveDailyStats();
+        }
+    }
+
+    function recordDailyAnswer(isCorrect, comboNow) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        if (isCorrect) dailyStats.correct++;
+        else dailyStats.wrong++;
+        if (comboNow > dailyStats.maxCombo) dailyStats.maxCombo = comboNow;
+        touchStudyStreak();
+        saveDailyStats();
+    }
+
+    function recordDailySessionClear(sessionScore) {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        dailyStats.sessionsCleared++;
+        dailyStats.totalScore += sessionScore;
+        touchStudyStreak();
+        saveDailyStats();
+    }
+
+    function getYesterdayKey() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getStreakDisplayText() {
+        const today = getTodayKey();
+        if (studyStreak.lastDate === today) return `🔥 連続学習 ${studyStreak.current}日目`;
+        if (studyStreak.lastDate === getYesterdayKey() && studyStreak.current > 0) {
+            return `🔥 ${studyStreak.current}日連続（今日プレイで更新！）`;
+        }
+        return '🔥 今日から連続記録スタート！';
+    }
+
+    function formatStatsDate() {
+        const d = new Date();
+        const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        return `${d.getMonth() + 1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+    }
+
+    function getRandomQuote() {
+        const dayIndex = new Date().getDate() % MOTIVATIONAL_QUOTES.length;
+        const mix = (dayIndex + dailyStats.correct) % MOTIVATIONAL_QUOTES.length;
+        return MOTIVATIONAL_QUOTES[mix];
+    }
+
+    function updateTodayStatsButton() {
+        const btn = document.getElementById('today-stats-btn-text');
+        if (!btn) return;
+        const seen = dailyStats.wordsSeen?.length || 0;
+        btn.innerText = seen > 0 ? `📊 今日の成績（${seen}語）` : '📊 今日の成績';
+    }
+
+    function openTodayStatsModal() {
+        if (dailyStats.date !== getTodayKey()) dailyStats = emptyDailyStats();
+        document.getElementById('stats-date-label').innerText = `${formatStatsDate()} · ${LANG_META[studyLang].label}`;
+        document.getElementById('stat-words-seen').innerText = dailyStats.wordsSeen.length;
+        document.getElementById('stat-correct').innerText = dailyStats.correct;
+        const total = dailyStats.correct + dailyStats.wrong;
+        document.getElementById('stat-accuracy').innerText = total > 0 ? `${Math.round(dailyStats.correct / total * 100)}%` : '—';
+        document.getElementById('stat-max-combo').innerText = dailyStats.maxCombo;
+        document.getElementById('stat-clears').innerText = dailyStats.sessionsCleared;
+        document.getElementById('stat-score').innerText = dailyStats.totalScore.toLocaleString();
+        const quote = getRandomQuote();
+        document.getElementById('stats-quote-text').innerText = `「${quote.text}」`;
+        document.getElementById('stats-quote-author').innerText = quote.author || '';
+        document.getElementById('stats-streak-main').innerText = getStreakDisplayText();
+        document.getElementById('stats-streak-sub').innerText = `最高記録: ${studyStreak.best}日`;
+        document.getElementById('today-stats-modal').classList.remove('hidden');
+    }
+
+    function closeTodayStatsModal() {
+        document.getElementById('today-stats-modal').classList.add('hidden');
+    }
+
+    function closeAllModals() {
+        document.getElementById('part-modal')?.classList.add('hidden');
+        document.getElementById('level-modal')?.classList.add('hidden');
+        document.getElementById('mastered-modal')?.classList.add('hidden');
+        document.getElementById('today-stats-modal')?.classList.add('hidden');
+    }
+
+    function toggleSettingsPanel() {
+        const panel = document.getElementById('settings-panel');
+        const icon = document.getElementById('settings-toggle-icon');
+        panel.classList.toggle('collapsed');
+        icon.innerText = panel.classList.contains('collapsed') ? '▼ 開く' : '▲ 閉じる';
+    }
+
+    function getCategoriesForLang(lang) {
+        return Object.values(ALL_CATEGORIES).filter(c => c.langs.includes(lang));
+    }
+
+    function getPartWords(categoryId, partId) {
+        const key = `${studyLang}_${categoryId}_${partId}`;
+        if (customWordData[key] && customWordData[key].length) return customWordData[key];
+        const cat = ALL_CATEGORIES[categoryId];
+        const part = cat?.parts[partId];
+        return part ? part.defaultWords() : [];
+    }
+
+    function isQuestionJapanese() { return gameMode === 'jp-foreign'; }
+    function getPromptText(w) { return isQuestionJapanese() ? w.jp : w.de; }
+    function getCorrectAnswer(w) { return isQuestionJapanese() ? w.de : w.jp; }
+    function getChoiceText(w) { return isQuestionJapanese() ? w.de : w.jp; }
+    function getTtsLang() { return LANG_META[studyLang].tts; }
+
+    function rebuildPartData(categoryId, partId) {
+        const words = getPartWords(categoryId, partId);
+        masterPool = words.slice();
+        stagesData = {};
+        const levelCount = Math.ceil(words.length / WORDS_PER_LEVEL) || 1;
+        for (let i = 0; i < levelCount; i++) {
+            stagesData[i + 1] = words.slice(i * WORDS_PER_LEVEL, (i + 1) * WORDS_PER_LEVEL);
+        }
+        return { words, levelCount };
+    }
+
+    function isMastered(de) { return masteredPool.some(w => (typeof w === 'string' ? w : w.de) === de); }
+    function getMasteredDes() { return masteredPool.map(w => typeof w === 'string' ? w : w.de); }
+
+    function findWordJp(de) {
+        const w = masterPool.find(x => x.de === de);
+        if (w) return w.jp;
+        const r = reviewPool.find(x => x.de === de);
+        if (r) return r.jp;
+        const m = masteredPool.find(x => (typeof x === 'object' ? x.de : x) === de);
+        if (m && typeof m === 'object') return m.jp;
+        return '';
+    }
+
+    function saveData() {
+        localStorage.setItem(storageKey('review_pool'), JSON.stringify(reviewPool));
+        localStorage.setItem(storageKey('mastered_pool'), JSON.stringify(masteredPool));
+        localStorage.setItem(storageKey('level_stats'), JSON.stringify(levelStats));
+        localStorage.setItem(storageKey('custom_words'), JSON.stringify(customWordData));
+    }
+
+    function setStudyLang(lang) {
+        if (studyLang === lang) return;
+        closeAllModals();
+        studyLang = lang;
+        localStorage.setItem('hamaru_study_lang', lang);
+        loadLangData();
+        currentCategory = getCategoriesForLang(lang)[0]?.id || 'toefl';
+        currentPart = 1;
+        gameMode = 'jp-foreign';
+        updateLangUI();
+        updateMenuUI();
+        showScreen('screen-select');
+    }
+
+    function updateLangUI() {
+        const meta = LANG_META[studyLang];
+        document.getElementById('app-title').innerText = meta.title;
+        document.getElementById('app-subtitle').innerText = meta.subtitle;
+        document.getElementById('lang-de').className = `mode-btn ${studyLang === 'de' ? 'active' : ''}`;
+        document.getElementById('lang-en').className = `mode-btn ${studyLang === 'en' ? 'active' : ''}`;
+        document.getElementById('mode-jp-foreign').innerText = meta.modeJpForeign;
+        document.getElementById('mode-foreign-jp').innerText = meta.modeForeignJp;
+        setMode(gameMode);
+    }
+
+    function hideAudioOverlay() {
+        document.getElementById('audio-unlock-overlay')?.classList.add('hidden');
+    }
+
+    async function resolveAssetUrl(candidates) {
+        const check = async () => {
+            for (const path of candidates) {
+                try {
+                    const res = await fetch(path, { method: 'HEAD' });
+                    if (res.ok) return path;
+                } catch (e) {}
+            }
+            return candidates[0];
+        };
+        return Promise.race([
+            check(),
+            new Promise(resolve => setTimeout(() => resolve(candidates[0]), 800))
+        ]);
+    }
+
+    async function resolveAllAssets() {
+        const [video, toeflCsv, englishCsv] = await Promise.all([
+            resolveAssetUrl(ASSET_CANDIDATES.video),
+            resolveAssetUrl(ASSET_CANDIDATES.toeflCsv),
+            resolveAssetUrl(ASSET_CANDIDATES.englishCsv)
+        ]);
+        resolvedAssets.bgm = ASSET_CANDIDATES.bgm[0];
+        resolvedAssets.video = video;
+        resolvedAssets.toeflCsv = toeflCsv;
+        resolvedAssets.englishCsv = englishCsv;
+        const videoEl = document.getElementById('fx-shooting-star');
+        if (videoEl) videoEl.src = resolvedAssets.video;
+    }
+
+    function initDefaultBGM() {
+        if (!useUploadedBgm) {
+            bgmFileReady = false;
+            customAudio.src = resolvedAssets.bgm;
+            customAudio.loop = true;
+            customAudio.load();
+            customAudio.oncanplaythrough = () => { bgmFileReady = true; };
+            customAudio.onerror = () => { bgmFileReady = false; };
+        }
+    }
+
+    function unlockAudio() {
+        hideAudioOverlay();
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            initDefaultBGM();
+            customAudio.volume = bgmVol;
+            const playPromise = customAudio.play();
+            if (playPromise) {
+                playPromise.then(() => { bgmStarted = true; bgmFileReady = true; }).catch(() => {
+                    bgmFileReady = false;
+                    customAudio.removeAttribute('src');
+                    customAudio.load();
+                    playSynthBGM();
+                    bgmStarted = true;
+                });
+            } else {
+                playSynthBGM();
+                bgmStarted = true;
+            }
+        } catch (e) {
+            playSynthBGM();
+            bgmStarted = true;
+        }
+    }
+
+    function playSynthBGM() {
+        if (!audioCtx || bgmVol <= 0) return;
+        stopSynthBGM();
+        const notes = [261.63, 329.63, 392, 523.25, 440, 349.23];
+        let step = 0;
+        synthBgmTimer = setInterval(() => {
+            if (bgmFileReady && !customAudio.paused) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = notes[step % notes.length];
+                gain.gain.setValueAtTime(bgmVol * 0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                step++;
+            } catch (e) {}
+        }, 350);
+    }
+    function stopSynthBGM() { if (synthBgmTimer) { clearInterval(synthBgmTimer); synthBgmTimer = null; } }
+    function startBGM() {
+        if (bgmStarted && !customAudio.paused) return;
+        unlockAudio();
+    }
+    function stopBGM() {
+        if (customAudio.src) customAudio.pause();
+        stopSynthBGM();
+    }
+
+    function resumeBGMPlayback() {
+        if (!bgmStarted || isPaused || bgmVol <= 0) return;
+        if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+        if (customAudio.src) {
+            customAudio.volume = bgmVol;
+            customAudio.play().catch(() => playSynthBGM());
+        } else if (!synthBgmTimer) {
+            playSynthBGM();
+        }
+    }
+
+    function handleAppHidden() {
+        if (!bgmStarted) return;
+        const audioPlaying = customAudio.src && !customAudio.paused;
+        if (!audioPlaying && !synthBgmTimer) return;
+        bgmSuspendedByHide = true;
+        stopBGM();
+        if (audioCtx?.state === 'running') audioCtx.suspend().catch(() => {});
+    }
+
+    function handleAppVisible() {
+        if (!bgmSuspendedByHide || document.hidden) return;
+        bgmSuspendedByHide = false;
+        if (isPaused) return;
+        resumeBGMPlayback();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        document.hidden ? handleAppHidden() : handleAppVisible();
+    });
+    window.addEventListener('pagehide', handleAppHidden);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) handleAppVisible(); });
+    function loadCustomBGM(input) {
+        if (input.files?.[0]) {
+            useUploadedBgm = true;
+            customAudio.src = URL.createObjectURL(input.files[0]);
+            startBGM();
+        }
+    }
+
+    function playSuccessSE() {
+        if (!audioCtx || seVol <= 0) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1046, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(seVol * 0.35, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+        } catch (e) {}
+    }
+
+    function playComboSE() {
+        if (!audioCtx || seVol <= 0) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(seVol * 0.25, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+        } catch (e) {}
+    }
+
+    function createShootingStar(x, y, count) {
+        const n = count || 22;
+        for (let i = 0; i < n; i++) {
+            particles.push({
+                x, y,
+                vx: (Math.random() - 0.5) * 14,
+                vy: (Math.random() - 0.5) * 14,
+                color: ['#a855f7', '#ec4899', '#fbbf24', '#38bdf8', '#fff'][Math.floor(Math.random() * 5)],
+                radius: Math.random() * 5 + 2,
+                alpha: 1,
+                decay: Math.random() * 0.025 + 0.015
+            });
+        }
+    }
+
+    function renderParticles() {
+        const canvas = document.getElementById('particle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.alpha -= p.decay;
+            if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function updateVolume() {
+        bgmVol = parseFloat(document.getElementById('bgm-volume').value);
+        seVol = parseFloat(document.getElementById('se-volume').value);
+        if (customAudio.src) customAudio.volume = bgmVol;
+    }
+
+    function setSpeed(preset, btnEl) {
+        dropSpeed = SPEED_PRESETS[preset] || SPEED_PRESETS.slow;
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+    }
+
+    function setMode(mode) {
+        gameMode = mode;
+        document.getElementById('mode-jp-foreign').className = `mode-btn ${mode === 'jp-foreign' ? 'active' : ''}`;
+        document.getElementById('mode-foreign-jp').className = `mode-btn ${mode === 'foreign-jp' ? 'active' : ''}`;
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function updateMenuUI() {
+        const reviewBtn = document.getElementById('review-stage-btn');
+        if (reviewPool.length > 0) {
+            reviewBtn.classList.remove('hidden');
+            document.getElementById('review-btn-text').innerText = `🔥 弱点・復習 (${reviewPool.length}件)`;
+        } else reviewBtn.classList.add('hidden');
+
+        document.getElementById('mastered-btn-text').innerText = `✨ 完全に覚えた単語 (${masteredPool.length}件)`;
+
+        const container = document.getElementById('category-list-container');
+        container.innerHTML = '';
+        getCategoriesForLang(studyLang).forEach(cat => {
+            const part = cat.parts[1];
+            const info = rebuildPartData(cat.id, part.id);
+            if (info.words.length === 0) {
+                console.warn(`単語データ未読込: ${cat.id} (${studyLang})`);
+            }
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.onclick = () => openCategoryModal(cat.id);
+            const countLabel = info.words.length > 0 ? `${info.words.length}語 / Level 1〜${info.levelCount}` : '単語ファイル未読込';
+            card.innerHTML = `
+                <div>
+                    <div class="category-title">${cat.icon} ${cat.title}</div>
+                    <div class="category-desc">${part.title}: ${countLabel}</div>
+                </div>
+                <div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
+            container.appendChild(card);
+        });
+        if (container.children.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:12px;">カテゴリがありません</div>';
+        }
+        updateTodayStatsButton();
+    }
+
+    function openCategoryModal(categoryId) {
+        currentCategory = categoryId;
+        const cat = ALL_CATEGORIES[categoryId];
+        document.getElementById('part-modal-title').innerText = `${cat.icon} ${cat.title}`;
+        document.getElementById('part-modal-breadcrumb').innerText = 'Part を選択';
+        const list = document.getElementById('part-list');
+        list.innerHTML = '';
+        Object.values(cat.parts).forEach(part => {
+            const info = rebuildPartData(categoryId, part.id);
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.onclick = () => { closePartModal(); openLevelModal(categoryId, part.id); };
+            card.innerHTML = `
+                <div>
+                    <div class="category-title">${part.title}</div>
+                    <div class="category-desc">${part.desc} — ${info.words.length}語 / ${info.levelCount} Levels</div>
+                </div><div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
+            list.appendChild(card);
+        });
+        document.getElementById('part-modal').classList.remove('hidden');
+    }
+    function closePartModal() { document.getElementById('part-modal').classList.add('hidden'); }
+
+    function openLevelModal(categoryId, partId) {
+        currentCategory = categoryId;
+        currentPart = partId;
+        ensureWordDataLoaded().then(() => {
+            const { words, levelCount } = rebuildPartData(categoryId, partId);
+            const cat = ALL_CATEGORIES[categoryId];
+            const part = cat.parts[partId];
+            document.getElementById('level-modal-title').innerText = `${part.title} — Level選択`;
+            document.getElementById('level-modal-breadcrumb').innerText = `${cat.title} › ${part.title} › ${words.length}語`;
+            buildLevelGridUI(levelCount, words.length);
+            document.getElementById('level-modal').classList.remove('hidden');
+        });
+    }
+    function closeLevelModal() { document.getElementById('level-modal').classList.add('hidden'); }
+
+    function buildLevelGridUI(levelCount, totalWords) {
+        const grid = document.getElementById('level-grid');
+        grid.innerHTML = '';
+        if (totalWords === 0) {
+            grid.innerHTML = `<div style="grid-column:span 2;text-align:center;color:#fca5a5;padding:20px;line-height:1.6;">
+                単語データが読み込めていません。<br>
+                <span style="font-size:0.75rem;color:#a78bfa;">GitHubに <strong>words-toefl-part1.js</strong> と <strong>toefl-part1.csv</strong> があるか確認してください。</span>
+            </div>`;
+            return;
+        }
+        for (let i = 1; i <= levelCount; i++) {
+            const key = levelKey(currentCategory, currentPart, i);
+            const stat = levelStats[key] || { cleared: false, stars: 0 };
+            const wordCount = stagesData[i]?.length ?? 0;
+            const card = document.createElement('div');
+            card.className = `level-card ${stat.cleared ? 'cleared' : ''}`;
+            card.onclick = () => { closeLevelModal(); startLevelStage(i); };
+            const starsStr = stat.cleared ? '★'.repeat(stat.stars) + '☆'.repeat(3 - stat.stars) : '未クリア';
+            card.innerHTML = `<div class="lvl-num">Level ${i}</div><div class="lvl-stars">${starsStr}</div><div class="lvl-count">${wordCount} 単語</div>`;
+            grid.appendChild(card);
+
+            if (i % LEVELS_PER_EXAM === 0) {
+                const rangeStart = i - LEVELS_PER_EXAM + 1;
+                const examCard = document.createElement('div');
+                examCard.className = 'level-card exam-card';
+                examCard.onclick = () => { closeLevelModal(); startExamRangeStage(i / LEVELS_PER_EXAM); };
+                examCard.innerHTML = `<div class="lvl-num">🏆 試験 Lv ${rangeStart}–${i}</div><div class="lvl-count">${LEVELS_PER_EXAM * WORDS_PER_LEVEL}語 / 1ミス終了</div>`;
+                grid.appendChild(examCard);
+            }
+        }
+        const allExam = document.createElement('div');
+        allExam.className = 'level-card exam-all-card';
+        allExam.onclick = () => { closeLevelModal(); startExamAllStage(); };
+        allExam.innerHTML = `<div class="lvl-num">🔥 総合試験</div><div class="lvl-count">全${totalWords}語 / 3ミス終了</div>`;
+        grid.appendChild(allExam);
+    }
+
+    function openMasteredModal() {
+        const list = document.getElementById('mastered-list');
+        list.innerHTML = '';
+        if (masteredPool.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">まだ登録されていません</div>';
+        } else {
+            masteredPool.forEach(item => {
+                const de = typeof item === 'string' ? item : item.de;
+                const jp = typeof item === 'object' ? item.jp : findWordJp(de);
+                const div = document.createElement('div');
+                div.className = 'word-list-item';
+                div.innerHTML = `<span><strong>${de}</strong> (${jp})</span>
+                    <button class="remove-btn" onclick="removeFromMastered('${de.replace(/'/g, "\\'")}')">解除</button>`;
+                list.appendChild(div);
+            });
+        }
+        document.getElementById('mastered-modal').classList.remove('hidden');
+    }
+    function closeMasteredModal() { document.getElementById('mastered-modal').classList.add('hidden'); }
+
+    function removeFromMastered(de) {
+        masteredPool = masteredPool.filter(w => (typeof w === 'string' ? w : w.de) !== de);
+        saveData();
+        updateMenuUI();
+        openMasteredModal();
+    }
+
+    function filterNonMastered(list) {
+        const mastered = getMasteredDes();
+        const filtered = list.filter(w => !mastered.includes(w.de));
+        return filtered.length > 0 ? filtered : list;
+    }
+
+    function showSelectScreen() {
+        stopGameFx();
+        updateMenuUI();
+        showScreen('screen-select');
+        startBGM();
+    }
+
+    function startGameFx() {
+        const video = document.getElementById('fx-shooting-star');
+        if (video) video.play().catch(() => {});
+    }
+
+    function stopGameFx() {
+        const video = document.getElementById('fx-shooting-star');
+        if (video) video.pause();
+        document.getElementById('game-field')?.classList.remove('combo-glow', 'jackpot-pulse');
+        document.getElementById('vignette-pulse')?.classList.remove('active');
+    }
+
+    function updateFxIntensity() {
+        const video = document.getElementById('fx-shooting-star');
+        const field = document.getElementById('game-field');
+        const vignette = document.getElementById('vignette-pulse');
+        const intensity = Math.min(combo * 0.04, 0.8);
+        if (video) {
+            video.style.opacity = 0.22 + intensity * 0.35;
+            video.classList.toggle('intense', combo >= 8);
+        }
+        field?.classList.toggle('combo-glow', combo >= 5);
+        vignette?.classList.toggle('active', combo >= 3);
+    }
+
+    function triggerJackpotMoment() {
+        const field = document.getElementById('game-field');
+        field?.classList.remove('jackpot-pulse');
+        void field?.offsetWidth;
+        field?.classList.add('jackpot-pulse');
+        document.getElementById('vignette-pulse')?.classList.add('active');
+        triggerFlash('success');
+        playJackpotSE();
+        const canvas = document.getElementById('particle-canvas');
+        if (canvas) {
+            for (let i = 0; i < 40; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    color: ['#fbbf24', '#ec4899', '#fff', '#a855f7'][Math.floor(Math.random() * 4)],
+                    radius: Math.random() * 6 + 3,
+                    alpha: 1,
+                    decay: Math.random() * 0.018 + 0.01
+                });
+            }
+        }
+    }
+
+    function playJackpotSE() {
+        if (!audioCtx || seVol <= 0) return;
+        try {
+            [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const t = audioCtx.currentTime + i * 0.07;
+                gain.gain.setValueAtTime(seVol * 0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.25);
+            });
+        } catch (e) {}
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused);
+        const video = document.getElementById('fx-shooting-star');
+        if (isPaused) {
+            stopBGM();
+            video?.pause();
+        } else {
+            startBGM();
+            video?.play().catch(() => {});
+        }
+    }
+
+    function quitGame() {
+        if (confirm('メインメニューに戻りますか？')) {
+            clearInterval(gameInterval);
+            isPaused = false;
+            document.getElementById('pause-overlay').classList.add('hidden');
+            showSelectScreen();
+        }
+    }
+
+    function startLevelStage(stageNum) {
+        currentSessionType = 'level';
+        currentSessionId = stageNum;
+        isExamSession = false;
+        suddenDeath = false;
+        maxDamageAllowed = 100;
+        rebuildPartData(currentCategory, currentPart);
+        const stageWords = stagesData[stageNum] || [];
+        if (stageWords.length === 0) {
+            alert('単語データが読み込めていません。ページを再読み込みするか、ファイルのアップロードを確認してください。');
+            return;
+        }
+        let pool = filterNonMastered(stageWords);
+        if (pool.length === 0) pool = stageWords;
+        initSessionWords(pool, LEVEL_CLEARS_PER_WORD);
+        initGame();
+    }
+
+    function startExamRangeStage(rangeIdx) {
+        currentSessionType = 'exam_range';
+        currentSessionId = rangeIdx;
+        isExamSession = true;
+        suddenDeath = true;
+        maxDamageAllowed = 100;
+        rebuildPartData(currentCategory, currentPart);
+        let rawList = [];
+        const startLvl = (rangeIdx - 1) * LEVELS_PER_EXAM + 1;
+        for (let l = startLvl; l < startLvl + LEVELS_PER_EXAM; l++) {
+            if (stagesData[l]) rawList = rawList.concat(stagesData[l]);
+        }
+        initSessionWords(rawList, 1);
+        initGame();
+    }
+
+    function startExamAllStage() {
+        currentSessionType = 'exam_all';
+        currentSessionId = 'all';
+        isExamSession = true;
+        suddenDeath = false;
+        maxDamageAllowed = 3;
+        rebuildPartData(currentCategory, currentPart);
+        initSessionWords(masterPool.slice(), 1);
+        initGame();
+    }
+
+    function startReviewStage() {
+        if (reviewPool.length === 0) return;
+        currentSessionType = 'review';
+        currentSessionId = 'review';
+        isExamSession = false;
+        suddenDeath = false;
+        maxDamageAllowed = 100;
+        const pool = reviewPool.filter(w => !isMastered(w.de));
+        initSessionWords(pool.length ? pool : reviewPool, LEVEL_CLEARS_PER_WORD);
+        initGame();
+    }
+
+    function repeatCurrentSession() {
+        if (currentSessionType === 'level') startLevelStage(currentSessionId);
+        else if (currentSessionType === 'exam_range') startExamRangeStage(currentSessionId);
+        else if (currentSessionType === 'exam_all') startExamAllStage();
+        else if (currentSessionType === 'review') startReviewStage();
+    }
+
+    function isSessionComplete() {
+        return sessionWords.length > 0 && sessionWords.every(w => w.currentClears >= w.requiredClears);
+    }
+
+    function initSessionWords(rawList, clearsRequired) {
+        sessionWords = rawList.map(item => ({
+            ...item, weight: 10, requiredClears: clearsRequired, currentClears: 0
+        }));
+        requiredTotalClears = sessionWords.reduce((sum, w) => sum + w.requiredClears, 0);
+    }
+
+    function initGame() {
+        activeWords = []; sessionStats = {}; particles = [];
+        hp = 100; score = 0; combo = 0; maxCombo = 0; solvedCount = 0; currentMistakes = 0;
+        nextSpawnLane = 1; spawnTimer = 9999; isPaused = false; lastComboMilestone = 0;
+        document.getElementById('pause-overlay').classList.add('hidden');
+
+        sessionWords.forEach(w => {
+            sessionStats[w.de] = { word: w, wrong: 0, totalTime: 0, count: 0 };
+        });
+
+        document.getElementById('left-options').innerHTML = '';
+        document.getElementById('right-options').innerHTML = '';
+        const field = document.getElementById('game-field');
+        const wordsLayer = document.getElementById('game-words-layer');
+        wordsLayer?.querySelectorAll('.falling-word, .combo-banner').forEach(e => e.remove());
+
+        const canvas = document.getElementById('particle-canvas');
+        canvas.width = field.clientWidth;
+        canvas.height = field.clientHeight;
+
+        updateUI();
+        unlockAudio();
+        showScreen('screen-game');
+        startGameFx();
+        startBGM();
+        if (gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(gameLoop, 1000 / 60);
+    }
+
+    function getSpawnInterval() {
+        return Math.max(60, 107 / dropSpeed);
+    }
+
+    function gameLoop() {
+        if (isPaused) return;
+
+        spawnTimer++;
+        if (!isSessionComplete() && spawnTimer > getSpawnInterval() && activeWords.length < 2) {
+            spawnNextWord();
+            spawnTimer = 0;
+        }
+
+        const fieldHeight = document.getElementById('game-field').clientHeight - 45;
+        for (let i = activeWords.length - 1; i >= 0; i--) {
+            const item = activeWords[i];
+            item.velocity = Math.min(item.velocity + 0.025 * dropSpeed, dropSpeed * 1.25);
+            item.y += item.velocity;
+            item.el.style.top = item.y + 'px';
+            if (item.y >= fieldHeight) {
+                handleMistake(item.data);
+                removeWord(item);
+            }
+        }
+
+        activeWords.forEach(w => w.el.classList.add('active'));
+        if (isSessionComplete() && activeWords.length === 0) {
+            endGame(true);
+        }
+        renderParticles();
+    }
+
+    function selectNextWord(excludeDes = []) {
+        const candidates = sessionWords.filter(w => w.currentClears < w.requiredClears && !excludeDes.includes(w.de));
+        if (!candidates.length) return null;
+
+        const totalWeight = candidates.reduce((s, w) => s + (w.weight || 10), 0);
+        let rand = Math.random() * totalWeight;
+        for (const word of candidates) {
+            if (rand < (word.weight || 10)) return word;
+            rand -= (word.weight || 10);
+        }
+        return candidates[0];
+    }
+
+    function spawnNextWord() {
+        if (isSessionComplete()) return;
+        const lane = nextSpawnLane;
+        const wordData = selectNextWord(activeWords.map(a => a.data.de));
+        if (!wordData) return;
+
+        const el = document.createElement('div');
+        el.className = `falling-word lane-${lane} spawn-pop`;
+        el.innerText = getPromptText(wordData);
+        document.getElementById('game-words-layer').appendChild(el);
+        recordDailyWordSeen(wordData.de);
+
+        const item = { data: wordData, el, y: -8, lane, velocity: dropSpeed * 0.35, spawnTime: Date.now() };
+        activeWords.push(item);
+        if (!isQuestionJapanese()) playTTS(wordData.de);
+        generateSideOptionsForWord(item);
+        nextSpawnLane = 1 - lane;
+        setTimeout(() => el.classList.remove('spawn-pop'), 220);
+    }
+
+    function generateSideOptionsForWord(wordItem) {
+        const lane = wordItem.lane;
+        const wordData = wordItem.data;
+        const container = document.getElementById(lane === 1 ? 'right-options' : 'left-options');
+        const correctText = getCorrectAnswer(wordData);
+        const choices = [correctText];
+        while (choices.length < 4) {
+            const rand = masterPool[Math.floor(Math.random() * masterPool.length)];
+            const text = getChoiceText(rand);
+            if (!choices.includes(text)) choices.push(text);
+        }
+        for (let i = choices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [choices[i], choices[j]] = [choices[j], choices[i]];
+        }
+        container.innerHTML = '';
+        choices.forEach(text => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.innerText = text;
+            btn.onclick = (e) => { createRippleEffect(e, btn); checkAnswer(text, lane, e); };
+            container.appendChild(btn);
+        });
+    }
+
+    function createRippleEffect(event, element) {
+        const rect = element.getBoundingClientRect();
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        const size = Math.max(rect.width, rect.height);
+        ripple.style.cssText = `width:${size}px;height:${size}px;left:${event.clientX - rect.left - size / 2}px;top:${event.clientY - rect.top - size / 2}px`;
+        element.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 450);
+    }
+
+    function checkAnswer(selectedText, lane, event) {
+        if (isPaused) return;
+        const target = activeWords.filter(w => w.lane === lane).sort((a, b) => b.y - a.y)[0];
+        if (!target) return;
+
+        const correctText = getCorrectAnswer(target.data);
+        const timeTaken = (Date.now() - target.spawnTime) / 1000;
+
+        if (selectedText === correctText) {
+            const pts = 100 + combo * 25;
+            score += pts;
+            combo++;
+            if (combo > maxCombo) maxCombo = combo;
+
+            target.data.currentClears++;
+            solvedCount++;
+            recordSessionStat(target.data.de, true, timeTaken);
+            recordDailyAnswer(true, combo);
+
+            const rect = target.el.getBoundingClientRect();
+            const fieldRect = document.getElementById('game-field').getBoundingClientRect();
+            createShootingStar(rect.left - fieldRect.left + rect.width / 2, rect.top - fieldRect.top + rect.height / 2, 18 + Math.min(combo, 20));
+            triggerScorePopup(event.clientX, event.clientY, `+${pts}`);
+
+            playSuccessSE();
+            if (combo >= 5 && combo % 5 === 0) {
+                playComboSE();
+                showComboBanner(combo);
+                document.getElementById('game-container').classList.add('combo-shake');
+                setTimeout(() => document.getElementById('game-container').classList.remove('combo-shake'), 180);
+            }
+            if (combo >= 10 && combo % 10 === 0) triggerJackpotMoment();
+            updateFxIntensity();
+
+            const comboEl = document.getElementById('combo-count');
+            comboEl.classList.remove('combo-pop');
+            void comboEl.offsetWidth;
+            comboEl.classList.add('combo-pop');
+
+            if (isQuestionJapanese()) playTTS(target.data.de);
+            triggerFlash('success');
+            updateBgGlowForCombo();
+
+            document.getElementById(lane === 1 ? 'right-options' : 'left-options').innerHTML = '';
+            target.el.classList.add('bound');
+            setTimeout(() => removeWord(target), 320);
+        } else {
+            handleMistake(target.data);
+            recordDailyAnswer(false, 0);
+            target.el.classList.remove('shake');
+            void target.el.offsetWidth;
+            target.el.classList.add('shake');
+        }
+        updateUI();
+    }
+
+    function showComboBanner(n) {
+        const field = document.getElementById('game-words-layer');
+        const banner = document.createElement('div');
+        banner.className = 'combo-banner';
+        banner.innerText = `${n} COMBO!`;
+        field.appendChild(banner);
+        setTimeout(() => banner.remove(), 700);
+    }
+
+    function triggerScorePopup(x, y, text) {
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.innerText = text;
+        popup.style.left = `${x - 25}px`;
+        popup.style.top = `${y - 35}px`;
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 650);
+    }
+
+    function updateBgGlowForCombo() {
+        const intensity = Math.min(combo * 0.05, 0.55);
+        document.getElementById('bg-glow').style.background =
+            `radial-gradient(circle at 50% 40%, rgba(236, 72, 153, ${intensity}), rgba(168, 85, 247, ${intensity * 0.5}) 40%, transparent 70%)`;
+    }
+
+    function handleMistake(wordObj) {
+        combo = 0;
+        currentMistakes++;
+        document.getElementById('bg-glow').style.background = 'transparent';
+        updateFxIntensity();
+        recordSessionStat(wordObj.de, false, 5);
+        if (!isExamSession) addReviewPool(wordObj);
+        triggerFlash('damage');
+
+        if (suddenDeath) takeDamage(100);
+        else if (currentSessionType === 'exam_all') {
+            if (currentMistakes >= maxDamageAllowed) takeDamage(100);
+            else updateUI();
+        } else {
+            takeDamage(12);
+            wordObj.requiredClears = Math.max(wordObj.requiredClears, wordObj.currentClears + 2);
+        }
+    }
+
+    function recordSessionStat(deText, isCorrect, timeTaken) {
+        if (!sessionStats[deText]) {
+            const found = sessionWords.find(w => w.de === deText) || { de: deText, jp: findWordJp(deText) };
+            sessionStats[deText] = { word: found, wrong: 0, totalTime: 0, count: 0 };
+        }
+        const stat = sessionStats[deText];
+        stat.count++;
+        stat.totalTime += timeTaken;
+        if (!isCorrect) stat.wrong++;
+    }
+
+    function addReviewPool(wordObj) {
+        if (!reviewPool.some(w => w.de === wordObj.de) && !isMastered(wordObj.de)) {
+            reviewPool.push({ de: wordObj.de, jp: wordObj.jp });
+            saveData();
+        }
+    }
+
+    function removeWord(item) {
+        item.el?.remove();
+        activeWords = activeWords.filter(w => w !== item);
+        if (activeWords.length < 2) spawnTimer = Math.floor(getSpawnInterval() * 0.5);
+    }
+
+    function takeDamage(amount) {
+        hp -= amount;
+        if (hp <= 0) { hp = 0; endGame(false); }
+        updateUI();
+    }
+
+    function triggerFlash(type) {
+        const el = document.getElementById('flash');
+        el.className = `flash-overlay ${type}`;
+        setTimeout(() => el.className = 'flash-overlay', 120);
+    }
+
+    function updateUI() {
+        if (currentSessionType === 'exam_all') {
+            const lives = Math.max(0, maxDamageAllowed - currentMistakes);
+            document.getElementById('hp-bar').style.width = (lives / maxDamageAllowed * 100) + '%';
+        } else {
+            document.getElementById('hp-bar').style.width = hp + '%';
+        }
+        document.getElementById('combo-count').innerText = combo;
+        document.getElementById('progress-count').innerText = `CLEAR: ${solvedCount}/${requiredTotalClears}`;
+    }
+
+    function playTTS(text) {
+        if ('speechSynthesis' in window && seVol > 0) {
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = getTtsLang();
+            uttr.volume = seVol;
+            window.speechSynthesis.speak(uttr);
+        }
+    }
+
+    function endGame(isClear) {
+        clearInterval(gameInterval);
+        stopGameFx();
+        document.getElementById('bg-glow').style.background = 'transparent';
+
+        if (isClear && currentSessionType === 'level') {
+            const attempts = Object.values(sessionStats).reduce((s, x) => s + x.count, 0);
+            const wrongs = Object.values(sessionStats).reduce((s, x) => s + x.wrong, 0);
+            const accuracy = attempts > 0 ? (attempts - wrongs) / attempts : 1;
+            let stars = 1;
+            if (accuracy >= 0.95) stars = 3;
+            else if (accuracy >= 0.8) stars = 2;
+            levelStats[levelKey(currentCategory, currentPart, currentSessionId)] = { cleared: true, stars };
+            saveData();
+        }
+        if (isClear) recordDailySessionClear(score);
+
+        const titleEl = document.getElementById('result-title');
+        titleEl.innerText = isClear ? 'STAGE CLEAR!' : 'GAME OVER';
+        titleEl.className = `result-title ${isClear ? 'clear' : 'failed'}`;
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('max-combo').innerText = maxCombo;
+        renderSessionWeaknessRanking();
+        renderReviewContainer();
+        showScreen('screen-result');
+    }
+
+    function renderSessionWeaknessRanking() {
+        const listEl = document.getElementById('ranking-list');
+        listEl.innerHTML = '';
+        const ranked = Object.values(sessionStats).filter(s => s.count > 0).map(s => ({
+            de: s.word.de,
+            wrong: s.wrong,
+            avgTime: (s.totalTime / s.count).toFixed(1),
+            score: s.wrong * 100 + (s.totalTime / s.count) * 10
+        })).sort((a, b) => b.score - a.score).slice(0, 5);
+
+        if (!ranked.length || ranked[0].score === 0) {
+            listEl.innerHTML = '<div style="text-align:center;color:#a78bfa;">苦手単語なし！</div>';
+            return;
+        }
+        ranked.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'ranking-item';
+            div.innerHTML = `<span>${idx + 1}位 <strong>${item.de}</strong></span><span>ミス ${item.wrong} (${item.avgTime}s)</span>`;
+            listEl.appendChild(div);
+        });
+    }
+
+    function renderReviewContainer() {
+        const container = document.getElementById('review-container');
+        container.innerHTML = '';
+        let played = Object.values(sessionStats).filter(s => s.count > 0).map(s => s.word);
+        if (!played.length) played = sessionWords;
+
+        played.forEach(word => {
+            const div = document.createElement('div');
+            const wrong = sessionStats[word.de]?.wrong > 0;
+            div.className = `review-item ${wrong ? 'wrong-item' : 'correct-item'}`;
+            const inReview = reviewPool.some(w => w.de === word.de);
+            const inMastered = isMastered(word.de);
+            const safeDe = word.de.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeJp = (word.jp || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            div.innerHTML = `
+                <span class="word-text"><strong>${word.de}</strong> (${word.jp})</span>
+                <div class="status-btn-group">
+                    <button class="status-select-btn review ${inReview ? 'active' : 'inactive'}"
+                        onclick="toggleReviewStatus('${safeDe}', '${safeJp}', this)">🔥 復習</button>
+                    <button class="status-select-btn mastered ${inMastered ? 'active' : 'inactive'}"
+                        onclick="toggleMasteredStatus('${safeDe}', '${safeJp}', this)">✨ 覚えた</button>
+                </div>`;
+            container.appendChild(div);
+        });
+    }
+
+    function toggleReviewStatus(de, jp, btnEl) {
+        const exists = reviewPool.some(w => w.de === de);
+        if (exists) {
+            reviewPool = reviewPool.filter(w => w.de !== de);
+            btnEl.className = 'status-select-btn review inactive';
+        } else {
+            reviewPool.push({ de, jp });
+            btnEl.className = 'status-select-btn review active';
+            if (isMastered(de)) {
+                masteredPool = masteredPool.filter(w => (typeof w === 'string' ? w : w.de) !== de);
+            }
+        }
+        saveData();
+        updateMenuUI();
+        renderReviewContainer();
+    }
+
+    function toggleMasteredStatus(de, jp, btnEl) {
+        if (isMastered(de)) {
+            masteredPool = masteredPool.filter(w => (typeof w === 'string' ? w : w.de) !== de);
+            btnEl.className = 'status-select-btn mastered inactive';
+        } else {
+            masteredPool.push({ de, jp });
+            btnEl.className = 'status-select-btn mastered active';
+            reviewPool = reviewPool.filter(w => w.de !== de);
+        }
+        saveData();
+        updateMenuUI();
+        renderReviewContainer();
+    }
+
+    function parseWordRows(rows) {
+        const words = [];
+        for (const row of rows) {
+            if (!row || row.length < 2) continue;
+            const de = String(row[0] ?? '').trim();
+            const jp = String(row[1] ?? '').trim();
+            const skipHeaders = ['deutsch', 'german', '英語', 'english', '日本語', 'japanese'];
+            if (!de || !jp || skipHeaders.includes(de.toLowerCase()) || skipHeaders.includes(jp.toLowerCase())) continue;
+            words.push({ de, jp });
+        }
+        return words;
+    }
+
+    function parseCsvText(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        return parseWordRows(lines.map(l => {
+            const idx = l.indexOf(',');
+            return idx >= 0 ? [l.slice(0, idx), l.slice(idx + 1)] : [l];
+        }));
+    }
+
+    async function fetchCsvWords(path) {
+        try {
+            const res = await fetch(path);
+            if (!res.ok) return [];
+            return parseCsvText(await res.text());
+        } catch (e) {
+            console.warn('CSV読込失敗:', path, e);
+            return [];
+        }
+    }
+
+    async function ensureWordDataLoaded() {
+        if (!window.TOEFL_PART1_WORDS?.length) {
+            window.TOEFL_PART1_WORDS = await fetchCsvWords(resolvedAssets.toeflCsv);
+        }
+        if (!window.ENGLISH_GRAMMAR_PART1_WORDS?.length) {
+            window.ENGLISH_GRAMMAR_PART1_WORDS = await fetchCsvWords(resolvedAssets.englishCsv);
+        }
+    }
+
+    function importWordList(input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        const statusEl = document.getElementById('import-status');
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                let words = [];
+                if (file.name.endsWith('.csv')) {
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/).filter(l => l.trim());
+                    words = parseWordRows(lines.map(l => {
+                        const idx = l.indexOf(',');
+                        return idx >= 0 ? [l.slice(0, idx), l.slice(idx + 1)] : [l];
+                    }));
+                } else if (typeof XLSX !== 'undefined') {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    words = parseWordRows(rows);
+                } else {
+                    statusEl.innerText = 'Excel読込にはネット接続が必要です';
+                    return;
+                }
+                if (words.length < 10) {
+                    statusEl.innerText = '単語が少なすぎます';
+                    return;
+                }
+                const defaultCat = getCategoriesForLang(studyLang)[0];
+                customWordData[`${studyLang}_${defaultCat?.id || 'toefl'}_1`] = words;
+                saveData();
+                updateMenuUI();
+                statusEl.innerText = `✓ ${words.length}語を読み込みました`;
+            } catch (err) {
+                statusEl.innerText = '読み込み失敗';
+                console.error(err);
+            }
+        };
+
+        if (file.name.endsWith('.csv')) reader.readAsText(file, 'UTF-8');
+        else reader.readAsArrayBuffer(file);
+        input.value = '';
+    }
+
+    async function bootApp() {
+        loadLangData();
+        if (studyLang === 'en') currentCategory = 'grammar';
+
+        const overlay = document.getElementById('audio-unlock-overlay');
+        const startAudio = () => unlockAudio();
+        overlay?.addEventListener('click', startAudio);
+        overlay?.addEventListener('touchstart', (e) => { e.preventDefault(); startAudio(); }, { passive: false });
+
+        updateLangUI();
+        updateMenuUI();
+
+        resolveAllAssets().then(async () => {
+            await ensureWordDataLoaded();
+            updateMenuUI();
+        });
+    }
+
+    bootApp();
+</script>
+</body>
+</html>
