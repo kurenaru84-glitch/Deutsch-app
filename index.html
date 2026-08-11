@@ -200,13 +200,13 @@
         }
         .chunk-bubble {
             position: absolute;
-            max-width: 46%;
-            min-width: 38%;
-            padding: 12px 10px;
+            max-width: 54%;
+            min-width: 46%;
+            padding: 16px 14px;
             border: none; border-radius: 999px;
-            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(186, 230, 253, 0.85) 45%, rgba(147, 197, 253, 0.75));
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35), inset 0 -3px 8px rgba(59, 130, 246, 0.2);
-            color: #0c4a6e; font-size: 0.75rem; font-weight: 900;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.98), rgba(186, 230, 253, 0.9) 45%, rgba(125, 211, 252, 0.82));
+            box-shadow: 0 8px 28px rgba(56, 189, 248, 0.45), inset 0 -4px 10px rgba(59, 130, 246, 0.25);
+            color: #0c4a6e; font-size: 0.9rem; font-weight: 900;
             line-height: 1.35; text-align: center; cursor: pointer;
             animation: bubbleFloat 3s ease-in-out infinite alternate;
             z-index: 2;
@@ -260,6 +260,64 @@
         }
         .chunk-btn-mastered { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
         .chunk-btn-review { background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; }
+
+        /* 暗記カードモード */
+        .flashcard-panel {
+            flex: 1; display: flex; flex-direction: column; gap: 12px;
+            min-height: 0; margin-top: 4px; padding-bottom: 4px;
+        }
+        .flashcard-hint { text-align: center; font-size: 0.72rem; color: #a78bfa; font-weight: 800; }
+        .flashcard-scene {
+            flex: 1; perspective: 900px; min-height: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .flashcard {
+            width: 100%; height: 100%; max-height: 340px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .flashcard-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .flashcard-inner.flipped { transform: rotateY(180deg); }
+        .flashcard-face {
+            position: absolute; inset: 0;
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            border-radius: 20px; padding: 24px 18px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; line-height: 1.55;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+        }
+        .flashcard-front {
+            background: linear-gradient(160deg, rgba(88, 28, 135, 0.85), rgba(30, 15, 60, 0.95));
+            border: 2px solid rgba(168, 85, 247, 0.55);
+            color: #f3e8ff; font-size: 1rem; font-weight: 800;
+        }
+        .flashcard-back {
+            background: linear-gradient(160deg, #fffef8, #fef3c7);
+            border: 3px solid #d97706;
+            color: #0a0414; font-size: 0.92rem; font-weight: 800;
+            transform: rotateY(180deg);
+        }
+        .flashcard-face-label { font-size: 0.65rem; color: #a78bfa; font-weight: 800; margin-bottom: 10px; }
+        .flashcard-back .flashcard-face-label { color: #92400e; }
+        .flashcard-actions {
+            display: flex; gap: 10px; flex-shrink: 0;
+        }
+        .flashcard-actions button {
+            flex: 1; border: none; border-radius: 14px; padding: 14px 10px;
+            font-weight: 900; font-size: 0.88rem; cursor: pointer;
+            opacity: 0.45; pointer-events: none; transition: opacity 0.2s;
+        }
+        .flashcard-actions button.ready { opacity: 1; pointer-events: auto; }
+        .sentence-mode-btns { display: flex; flex-direction: column; gap: 8px; }
+        .sentence-mode-btn {
+            width: 100%; padding: 12px; border: none; border-radius: 12px;
+            font-weight: 900; font-size: 0.85rem; cursor: pointer; color: #fff;
+        }
+        .sentence-mode-btn.chunk { background: linear-gradient(135deg, #a855f7, #6366f1); }
+        .sentence-mode-btn.flash { background: linear-gradient(135deg, #0891b2, #0284c7); }
 
         .stats-grid {
             display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
@@ -734,12 +792,13 @@
     <!-- 文章モード -->
     <div id="sentence-modal" class="modal-overlay hidden">
         <div class="modal-header">
-            <div class="modal-title">📖 文章モード（チャンク並べ替え）</div>
+            <div class="modal-title">📖 文章モード</div>
             <button class="close-btn" onclick="closeSentenceModal()">✕</button>
         </div>
-        <div class="modal-breadcrumb" id="sentence-modal-desc">日本語訳を見て、英語チャンクを順番にタップして文章を完成させます。（区切り: | または /）</div>
-        <div class="review-modal-actions">
-            <button class="review-start-btn" style="background:linear-gradient(135deg,#a855f7,#6366f1);" onclick="startChunkSession()">▶ セッション開始</button>
+        <div class="modal-breadcrumb" id="sentence-modal-desc">学習方法を選んでください</div>
+        <div class="review-modal-actions sentence-mode-btns">
+            <button class="sentence-mode-btn chunk" onclick="startChunkSession()">🫧 チャンク並べ替え（バブル）</button>
+            <button class="sentence-mode-btn flash" onclick="startFlashcardSession()">🃏 暗記カード（タップで裏返し）</button>
         </div>
         <div class="category-list word-list-modal" id="sentence-preview-list"></div>
     </div>
@@ -892,6 +951,40 @@
         </div>
     </div>
 
+    <!-- 暗記カードモード -->
+    <div id="screen-flashcard" class="screen hidden">
+        <div class="header-bar">
+            <div class="hp-container" style="visibility:hidden;"><div class="hp-bar"></div></div>
+            <div class="header-controls">
+                <button class="icon-btn" onclick="quitFlashcardGame()">↩</button>
+            </div>
+            <div class="score-info">
+                <span id="flashcard-progress" style="font-size:0.85rem;">1/5</span>
+            </div>
+        </div>
+        <div class="flashcard-panel">
+            <div class="flashcard-hint" id="flashcard-hint">カードをタップして裏返す</div>
+            <div class="flashcard-scene">
+                <div class="flashcard" onclick="flipFlashcard()">
+                    <div class="flashcard-inner" id="flashcard-inner">
+                        <div class="flashcard-face flashcard-front">
+                            <div class="flashcard-face-label">🇯🇵 日本語</div>
+                            <div id="flashcard-jp"></div>
+                        </div>
+                        <div class="flashcard-face flashcard-back">
+                            <div class="flashcard-face-label">🇬🇧 English</div>
+                            <div id="flashcard-en"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flashcard-actions">
+                <button class="chunk-btn-mastered" id="flashcard-btn-ok" onclick="flashcardMark(true)">✨ 覚えた</button>
+                <button class="chunk-btn-review" id="flashcard-btn-ng" onclick="flashcardMark(false)">🔥 覚えてない</button>
+            </div>
+        </div>
+    </div>
+
     <!-- リザルト -->
     <div id="screen-result" class="screen hidden">
         <div id="result-title" class="result-title">STAGE CLEAR!</div>
@@ -982,6 +1075,7 @@
 
     let chunkSession = null;
     let chunkTimerInterval = null;
+    let flashcardSession = null;
 
     let currentCategory = 'toefl';
     let currentPart = 1;
@@ -1012,11 +1106,20 @@
     let customAudio = new Audio();
     customAudio.loop = true;
     customAudio.preload = 'auto';
+    customAudio.addEventListener('canplaythrough', () => {
+        bgmFileReady = true;
+        if (bgmWantsPlay && audioUnlockDone && !isPaused && bgmVol > 0 && customAudio.paused) {
+            customAudio.play().catch(() => {});
+        }
+    });
+    customAudio.addEventListener('playing', () => { bgmStarted = true; stopSynthBGM(); });
     let bgmVol = 0.3, seVol = 0.5;
     let bgmStarted = false;
     let useUploadedBgm = false;
     let bgmSuspendedByHide = false;
     let audioUnlockDone = false;
+    let bgmWantsPlay = false;
+    let bgmSrcInitialized = false;
     let dailyStats = { date: '', wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
     let studyStreak = { lastDate: '', current: 0, best: 0 };
 
@@ -1306,46 +1409,51 @@
     }
 
     function initDefaultBGM() {
-        if (!useUploadedBgm) {
+        if (useUploadedBgm) return;
+        const src = resolvedAssets.bgm;
+        const needsLoad = !bgmSrcInitialized || !customAudio.getAttribute('src');
+        if (needsLoad) {
             bgmFileReady = false;
-            customAudio.src = resolvedAssets.bgm;
+            customAudio.src = src;
             customAudio.loop = true;
             customAudio.load();
-            customAudio.oncanplaythrough = () => { bgmFileReady = true; };
+            bgmSrcInitialized = true;
             customAudio.onerror = () => { bgmFileReady = false; };
         }
     }
 
     function ensureAudioContext() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     }
 
-    function playBGMNow() {
-        if (bgmVol <= 0 || isPaused) return;
+    function attemptBGMPlay() {
+        if (!audioUnlockDone || !bgmWantsPlay || isPaused || bgmVol <= 0) return;
+        if (customAudio.src && !customAudio.paused) return;
         ensureAudioContext();
-        initDefaultBGM();
-        customAudio.volume = bgmVol;
-        const playPromise = customAudio.play();
-        if (playPromise) {
-            playPromise.then(() => { bgmStarted = true; bgmFileReady = true; }).catch(() => {
-                bgmFileReady = false;
-                customAudio.removeAttribute('src');
-                customAudio.load();
+        const doPlay = () => {
+            initDefaultBGM();
+            customAudio.volume = bgmVol;
+            const p = customAudio.play();
+            if (p) {
+                p.then(() => { bgmStarted = true; bgmFileReady = true; stopSynthBGM(); })
+                 .catch(() => { playSynthBGM(); bgmStarted = true; });
+            } else {
                 playSynthBGM();
                 bgmStarted = true;
-            });
+            }
+        };
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().then(doPlay).catch(() => { playSynthBGM(); bgmStarted = true; });
         } else {
-            playSynthBGM();
-            bgmStarted = true;
+            doPlay();
         }
     }
 
     function unlockAudio() {
         hideAudioOverlay();
         audioUnlockDone = true;
-        ensureAudioContext();
-        playBGMNow();
+        bgmWantsPlay = true;
+        attemptBGMPlay();
     }
 
     function bindAudioUnlockOverlay() {
@@ -1385,13 +1493,9 @@
     }
     function stopSynthBGM() { if (synthBgmTimer) { clearInterval(synthBgmTimer); synthBgmTimer = null; } }
     function startBGM() {
-        if (!audioUnlockDone) {
-            unlockAudio();
-            return;
-        }
-        if (customAudio.src && !customAudio.paused) return;
-        if (synthBgmTimer) return;
-        playBGMNow();
+        if (!audioUnlockDone) { unlockAudio(); return; }
+        bgmWantsPlay = true;
+        attemptBGMPlay();
     }
     function stopBGM() {
         if (customAudio.src) customAudio.pause();
@@ -1399,18 +1503,12 @@
     }
 
     function resumeBGMPlayback() {
-        if (!audioUnlockDone || isPaused || bgmVol <= 0) return;
-        ensureAudioContext();
-        if (customAudio.src) {
-            customAudio.volume = bgmVol;
-            customAudio.play().then(() => { bgmStarted = true; }).catch(() => playBGMNow());
-        } else if (!synthBgmTimer) {
-            playBGMNow();
-        }
+        if (!audioUnlockDone || !bgmWantsPlay || isPaused || bgmVol <= 0) return;
+        attemptBGMPlay();
     }
 
     function handleAppHidden() {
-        if (!bgmStarted) return;
+        if (!bgmWantsPlay) return;
         const audioPlaying = customAudio.src && !customAudio.paused;
         if (!audioPlaying && !synthBgmTimer) return;
         bgmSuspendedByHide = true;
@@ -1433,7 +1531,10 @@
     function loadCustomBGM(input) {
         if (input.files?.[0]) {
             useUploadedBgm = true;
+            bgmSrcInitialized = true;
+            bgmFileReady = false;
             customAudio.src = URL.createObjectURL(input.files[0]);
+            bgmWantsPlay = true;
             startBGM();
         }
     }
@@ -1505,6 +1606,8 @@
         bgmVol = parseFloat(document.getElementById('bgm-volume').value);
         seVol = parseFloat(document.getElementById('se-volume').value);
         if (customAudio.src) customAudio.volume = bgmVol;
+        if (bgmVol <= 0) stopBGM();
+        else if (audioUnlockDone) { bgmWantsPlay = true; attemptBGMPlay(); }
     }
 
     function setSpeed(preset, btnEl) {
@@ -1898,6 +2001,7 @@
         else if (currentSessionType === 'exam_all') startExamAllStage();
         else if (currentSessionType === 'review') startReviewStage();
         else if (currentSessionType === 'chunk') startChunkSession();
+        else if (currentSessionType === 'flashcard') startFlashcardSession();
     }
 
     function isSessionComplete() {
@@ -2328,9 +2432,7 @@
     function openSentenceModal() {
         const pool = getSentencePool();
         document.getElementById('sentence-modal-desc').innerText =
-            pool.length > CHUNK_SESSION_MAX
-                ? `${pool.length}文登録中。1セッション最大${CHUNK_SESSION_MAX}文。日本語を見てチャンクを順にタップ。`
-                : `${pool.length}文。日本語を見て、英語チャンクを順番にタップして完成させます。`;
+            `${pool.length}文登録中。モードを選んで開始してください。`;
         const list = document.getElementById('sentence-preview-list');
         list.innerHTML = '';
         if (pool.length === 0) {
@@ -2511,17 +2613,20 @@
         recordDailyAnswer(true, combo);
     }
 
-    function chunkMarkRemembered(remembered) {
-        const s = chunkSession?.sentences[chunkSession.index];
-        if (!s) return;
+    function saveSentenceMemory(s, remembered) {
         const item = { jp: s.jp, chunks: s.chunks, full: s.full || s.chunks.join(' ') };
-        const key = s.jp;
-        sentenceReviewPool = sentenceReviewPool.filter(x => x.jp !== key);
-        sentenceMasteredPool = sentenceMasteredPool.filter(x => x.jp !== key);
+        sentenceReviewPool = sentenceReviewPool.filter(x => x.jp !== s.jp);
+        sentenceMasteredPool = sentenceMasteredPool.filter(x => x.jp !== s.jp);
         if (remembered) sentenceMasteredPool.push(item);
         else sentenceReviewPool.push(item);
         saveData();
-        recordDailyWordSeen(key);
+        recordDailyWordSeen(s.jp);
+    }
+
+    function chunkMarkRemembered(remembered) {
+        const s = chunkSession?.sentences[chunkSession.index];
+        if (!s) return;
+        saveSentenceMemory(s, remembered);
         document.getElementById('chunk-reveal-overlay').classList.add('hidden');
         advanceChunkSentence(true);
     }
@@ -2573,6 +2678,81 @@
             '<div style="text-align:center;color:#a78bfa;padding:8px;">文章モード</div>';
         document.getElementById('review-container').innerHTML =
             '<div style="text-align:center;color:#c4b5fd;padding:12px;font-size:0.78rem;line-height:1.6;">チャンク並べ替えセッション完了<br>CSVは設定 → 📖 文章CSV から追加できます</div>';
+        showScreen('screen-result');
+        startBGM();
+    }
+
+    function startFlashcardSession() {
+        const pool = shuffleArray(getSentencePool()).slice(0, CHUNK_SESSION_MAX);
+        if (pool.length === 0) return;
+        closeSentenceModal();
+        currentSessionType = 'flashcard';
+        currentSessionId = 'flashcard';
+        isPaused = false;
+        flashcardSession = { sentences: pool, index: 0, flipped: false };
+        showScreen('screen-flashcard');
+        startBGM();
+        loadFlashcard();
+    }
+
+    function loadFlashcard() {
+        if (!flashcardSession || flashcardSession.index >= flashcardSession.sentences.length) {
+            endFlashcardSession();
+            return;
+        }
+        const s = flashcardSession.sentences[flashcardSession.index];
+        flashcardSession.flipped = false;
+        document.getElementById('flashcard-inner').classList.remove('flipped');
+        document.getElementById('flashcard-jp').innerText = s.jp;
+        document.getElementById('flashcard-en').innerText = s.full || s.chunks.join(' ');
+        document.getElementById('flashcard-progress').innerText =
+            `${flashcardSession.index + 1}/${flashcardSession.sentences.length}`;
+        document.getElementById('flashcard-hint').innerText = 'カードをタップして裏返す';
+        document.getElementById('flashcard-btn-ok').classList.remove('ready');
+        document.getElementById('flashcard-btn-ng').classList.remove('ready');
+    }
+
+    function flipFlashcard() {
+        if (!flashcardSession || flashcardSession.flipped) return;
+        flashcardSession.flipped = true;
+        document.getElementById('flashcard-inner').classList.add('flipped');
+        document.getElementById('flashcard-hint').innerText = 'どうでしたか？';
+        document.getElementById('flashcard-btn-ok').classList.add('ready');
+        document.getElementById('flashcard-btn-ng').classList.add('ready');
+        const s = flashcardSession.sentences[flashcardSession.index];
+        window.speechSynthesis?.cancel();
+        playTTS(s.full || s.chunks.join(' '));
+    }
+
+    function flashcardMark(remembered) {
+        if (!flashcardSession?.flipped) return;
+        const s = flashcardSession.sentences[flashcardSession.index];
+        saveSentenceMemory(s, remembered);
+        recordDailyAnswer(remembered, remembered ? 1 : 0);
+        flashcardSession.index++;
+        loadFlashcard();
+    }
+
+    function quitFlashcardGame() {
+        if (confirm('メインメニューに戻りますか？')) {
+            flashcardSession = null;
+            showSelectScreen();
+        }
+    }
+
+    function endFlashcardSession() {
+        const count = flashcardSession?.sentences?.length || 0;
+        flashcardSession = null;
+        if (count > 0) recordDailySessionClear(count * 50);
+        const titleEl = document.getElementById('result-title');
+        titleEl.innerText = 'CARD SESSION CLEAR!';
+        titleEl.className = 'result-title clear';
+        document.getElementById('final-score').innerText = count;
+        document.getElementById('max-combo').innerText = '—';
+        document.getElementById('ranking-list').innerHTML =
+            `<div style="text-align:center;color:#a78bfa;padding:8px;">暗記カード ${count}枚</div>`;
+        document.getElementById('review-container').innerHTML =
+            '<div style="text-align:center;color:#c4b5fd;padding:12px;font-size:0.78rem;line-height:1.6;">暗記カードセッション完了<br>「覚えてない」は次回以降の復習に使えます</div>';
         showScreen('screen-result');
         startBGM();
     }
