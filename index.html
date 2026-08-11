@@ -319,6 +319,64 @@
         .sentence-mode-btn.chunk { background: linear-gradient(135deg, #a855f7, #6366f1); }
         .sentence-mode-btn.flash { background: linear-gradient(135deg, #0891b2, #0284c7); }
 
+        /* 文章リスト（タップで裏返し） */
+        .sentence-list-pager {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; margin-bottom: 8px; flex-shrink: 0;
+        }
+        .sentence-list-pager button {
+            background: rgba(88, 28, 135, 0.6); border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #e9d5ff; border-radius: 8px; padding: 6px 12px;
+            font-weight: 800; font-size: 0.75rem; cursor: pointer;
+        }
+        .sentence-list-pager button:disabled { opacity: 0.35; cursor: default; }
+        .sentence-list-pager-label { font-size: 0.72rem; color: #a78bfa; font-weight: 800; text-align: center; flex: 1; }
+        .sentence-list-card {
+            perspective: 700px; min-height: 76px; margin-bottom: 8px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .sentence-list-inner {
+            position: relative; min-height: 76px;
+            transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .sentence-list-inner.flipped { transform: rotateY(180deg); }
+        .sentence-list-face {
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            border-radius: 12px; padding: 10px 12px;
+            min-height: 76px; box-sizing: border-box;
+        }
+        .sentence-list-front {
+            background: rgba(30, 15, 60, 0.85);
+            border-left: 3px solid #a855f7;
+            color: #f3e8ff; font-size: 0.78rem; font-weight: 700; line-height: 1.45;
+        }
+        .sentence-list-back {
+            position: absolute; inset: 0;
+            transform: rotateY(180deg);
+            background: linear-gradient(160deg, #fffef8, #fef3c7);
+            border: 2px solid #d97706; color: #0a0414;
+            font-size: 0.76rem; font-weight: 800; line-height: 1.4;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .sentence-list-meta { font-size: 0.62rem; color: #a78bfa; margin-top: 4px; font-weight: 800; }
+        .sentence-list-back .sentence-list-meta { color: #92400e; }
+        .sentence-list-btns {
+            display: flex; gap: 6px; margin-top: 8px;
+        }
+        .sentence-list-btns button {
+            flex: 1; border: none; border-radius: 8px; padding: 6px 4px;
+            font-size: 0.65rem; font-weight: 900; cursor: pointer; color: #fff;
+        }
+        .sentence-list-btns .btn-ok { background: #10b981; }
+        .sentence-list-btns .btn-ng { background: #f97316; }
+        .sentence-status-badge {
+            display: inline-block; font-size: 0.58rem; padding: 1px 5px;
+            border-radius: 4px; margin-left: 4px; vertical-align: middle;
+        }
+        .sentence-status-badge.mastered { background: rgba(16,185,129,0.25); color: #6ee7b7; }
+        .sentence-status-badge.review { background: rgba(249,115,22,0.25); color: #fdba74; }
+
         .stats-grid {
             display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
             margin-bottom: 14px;
@@ -800,6 +858,11 @@
             <button class="sentence-mode-btn chunk" onclick="startChunkSession()">🫧 チャンク並べ替え（バブル）</button>
             <button class="sentence-mode-btn flash" onclick="startFlashcardSession()">🃏 暗記カード（タップで裏返し）</button>
         </div>
+        <div class="sentence-list-pager" id="sentence-list-pager">
+            <button id="sentence-page-prev" onclick="changeSentenceListPage(-1)">◀</button>
+            <span class="sentence-list-pager-label" id="sentence-list-page-label">1〜20</span>
+            <button id="sentence-page-next" onclick="changeSentenceListPage(1)">▶</button>
+        </div>
         <div class="category-list word-list-modal" id="sentence-preview-list"></div>
     </div>
 
@@ -1025,6 +1088,7 @@
     const REVIEW_SESSION_MAX = 100;
     const CHUNK_TIME_SEC = 45;
     const CHUNK_SESSION_MAX = 20;
+    const SENTENCES_PER_PAGE = 20;
 
     const MOTIVATIONAL_QUOTES = [
         { text: '小さな一歩の積み重ねが、いちばん強い。', author: '' },
@@ -1076,6 +1140,7 @@
     let chunkSession = null;
     let chunkTimerInterval = null;
     let flashcardSession = null;
+    let sentenceListPage = 0;
 
     let currentCategory = 'toefl';
     let currentPart = 1;
@@ -2429,31 +2494,107 @@
         }));
     }
 
-    function openSentenceModal() {
+    function getSentenceStatusBadge(jp) {
+        if (sentenceMasteredPool.some(s => s.jp === jp)) return '<span class="sentence-status-badge mastered">✨覚えた</span>';
+        if (sentenceReviewPool.some(s => s.jp === jp)) return '<span class="sentence-status-badge review">🔥復習</span>';
+        return '';
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function renderSentenceList() {
         const pool = getSentencePool();
+        const totalPages = Math.max(1, Math.ceil(pool.length / SENTENCES_PER_PAGE));
+        if (sentenceListPage >= totalPages) sentenceListPage = totalPages - 1;
+        if (sentenceListPage < 0) sentenceListPage = 0;
+
+        const start = sentenceListPage * SENTENCES_PER_PAGE;
+        const pageItems = pool.slice(start, start + SENTENCES_PER_PAGE);
+        const end = Math.min(start + pageItems.length, pool.length);
+
         document.getElementById('sentence-modal-desc').innerText =
-            `${pool.length}文登録中。モードを選んで開始してください。`;
+            `${pool.length}文登録中。リストをタップで英文表示 → 覚えた/覚えてない`;
+        document.getElementById('sentence-list-page-label').innerText =
+            pool.length > 0 ? `${start + 1}〜${end} / 全${pool.length}文 (${sentenceListPage + 1}/${totalPages})` : '0文';
+        document.getElementById('sentence-page-prev').disabled = sentenceListPage <= 0;
+        document.getElementById('sentence-page-next').disabled = sentenceListPage >= totalPages - 1;
+        document.getElementById('sentence-list-pager').style.display = pool.length > SENTENCES_PER_PAGE ? 'flex' : 'none';
+
         const list = document.getElementById('sentence-preview-list');
         list.innerHTML = '';
         if (pool.length === 0) {
-            list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">文章データがありません<br><span style="font-size:0.72rem;">設定からCSVを読み込むか、interview-sentences-demo.csv を確認してください</span></div>';
-        } else {
-            pool.slice(0, 12).forEach((s, i) => {
-                const div = document.createElement('div');
-                div.className = 'word-list-item review-item-row';
-                div.style.borderLeftColor = '#a855f7';
-                div.innerHTML = `<span><strong>${i + 1}.</strong> ${s.jp}<br><span style="font-size:0.68rem;color:#a78bfa;">${s.chunks.length}チャンク</span></span>`;
-                list.appendChild(div);
-            });
-            if (pool.length > 12) {
-                const more = document.createElement('div');
-                more.style.cssText = 'text-align:center;color:#a78bfa;font-size:0.72rem;padding:8px;';
-                more.innerText = `…他 ${pool.length - 12} 文`;
-                list.appendChild(more);
-            }
+            list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">文章データがありません<br><span style="font-size:0.72rem;">設定からCSVを読み込んでください</span></div>';
+            return;
         }
+
+        pageItems.forEach((s, i) => {
+            const globalIdx = start + i;
+            const full = escapeHtml(s.full || s.chunks.join(' '));
+            const jp = escapeHtml(s.jp);
+            const card = document.createElement('div');
+            card.className = 'sentence-list-card';
+            card.dataset.idx = globalIdx;
+            card.onclick = (e) => toggleSentenceListFlip(globalIdx, e);
+            card.innerHTML = `
+                <div class="sentence-list-inner" id="sentence-card-${globalIdx}">
+                    <div class="sentence-list-face sentence-list-front">
+                        <strong>${globalIdx + 1}.</strong> ${jp}${getSentenceStatusBadge(s.jp)}
+                        <div class="sentence-list-meta">タップで英文表示 · ${s.chunks.length}チャンク</div>
+                    </div>
+                    <div class="sentence-list-face sentence-list-back">
+                        <div>${full}</div>
+                        <div class="sentence-list-btns">
+                            <button class="btn-ok" onclick="sentenceListMark(${globalIdx}, true, event)">✨ 覚えた</button>
+                            <button class="btn-ng" onclick="sentenceListMark(${globalIdx}, false, event)">🔥 覚えてない</button>
+                        </div>
+                    </div>
+                </div>`;
+            list.appendChild(card);
+        });
+    }
+
+    function openSentenceModal() {
+        sentenceListPage = 0;
+        renderSentenceList();
         document.getElementById('sentence-modal').classList.remove('hidden');
     }
+
+    function changeSentenceListPage(delta) {
+        sentenceListPage += delta;
+        renderSentenceList();
+    }
+
+    function toggleSentenceListFlip(globalIdx, e) {
+        if (e.target.closest('.sentence-list-btns')) return;
+        const inner = document.getElementById(`sentence-card-${globalIdx}`);
+        if (!inner) return;
+        const willFlip = !inner.classList.contains('flipped');
+        document.querySelectorAll('.sentence-list-inner.flipped').forEach(el => {
+            if (el !== inner) el.classList.remove('flipped');
+        });
+        inner.classList.toggle('flipped');
+        if (willFlip) {
+            const s = getSentencePool()[globalIdx];
+            if (s) {
+                window.speechSynthesis?.cancel();
+                playTTS(s.full || s.chunks.join(' '));
+            }
+        }
+    }
+
+    function sentenceListMark(globalIdx, remembered, e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const s = getSentencePool()[globalIdx];
+        if (!s) return;
+        saveSentenceMemory(s, remembered);
+        const inner = document.getElementById(`sentence-card-${globalIdx}`);
+        if (inner) inner.classList.remove('flipped');
+        renderSentenceList();
+    }
+
     function closeSentenceModal() { document.getElementById('sentence-modal').classList.add('hidden'); }
 
     function stopChunkTimer() {
