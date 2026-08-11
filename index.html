@@ -158,6 +158,71 @@
         .word-list-item.review-item-row { border-left-color: #f97316; }
         .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
         .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
+        .stage-btn.sentence-btn { border-color: #c084fc; background: rgba(192, 132, 252, 0.15); color: #e9d5ff; }
+
+        /* 文章モード（チャンク並べ替え） */
+        .chunk-panel {
+            flex: 1; display: flex; flex-direction: column; gap: 10px;
+            min-height: 0; margin-top: 4px;
+        }
+        .chunk-jp-box {
+            background: rgba(20, 12, 40, 0.85);
+            border: 2px solid rgba(168, 85, 247, 0.45);
+            border-radius: 14px; padding: 14px;
+            flex-shrink: 0;
+        }
+        .chunk-jp-label { font-size: 0.65rem; color: #a78bfa; font-weight: 800; margin-bottom: 6px; }
+        .chunk-jp-text { font-size: 0.92rem; color: #f3e8ff; font-weight: 700; line-height: 1.55; }
+        .chunk-meta {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.75rem; color: #c4b5fd; font-weight: 800; flex-shrink: 0;
+        }
+        .chunk-timer { color: #fbbf24; font-size: 0.85rem; font-weight: 900; }
+        .chunk-timer.urgent { color: #ef4444; animation: timerPulse 0.6s ease infinite; }
+        @keyframes timerPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .chunk-built {
+            flex: 1; min-height: 72px; max-height: 38%;
+            background: #fffef8;
+            border: 3px solid #78350f;
+            border-radius: 14px; padding: 12px;
+            color: #0a0414; font-size: 0.88rem; font-weight: 800;
+            line-height: 1.5; overflow-y: auto;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chunk-built.empty { color: #94a3b8; font-weight: 700; font-size: 0.78rem; }
+        .chunk-options {
+            display: grid; grid-template-columns: 1fr; gap: 8px;
+            flex-shrink: 0; max-height: 42%; overflow-y: auto;
+        }
+        .chunk-btn {
+            background: linear-gradient(145deg, rgba(40, 20, 70, 0.95), rgba(25, 12, 50, 0.95));
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            color: #fff; font-size: 0.82rem; font-weight: 800;
+            border-radius: 12px; padding: 12px 10px;
+            cursor: pointer; text-align: left; line-height: 1.4;
+            transition: transform 0.06s;
+        }
+        .chunk-btn:active { transform: scale(0.97); }
+        .chunk-btn.correct-flash {
+            animation: chunkCorrect 0.35s ease forwards;
+        }
+        @keyframes chunkCorrect {
+            0% { background: rgba(16, 185, 129, 0.3); border-color: #10b981; }
+            100% { opacity: 0; transform: scale(0.95); max-height: 0; padding: 0; margin: 0; }
+        }
+        .chunk-btn.wrong-flash { animation: shake 0.18s ease; border-color: #ef4444 !important; }
+        .chunk-complete-banner {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(13, 2, 33, 0.55); pointer-events: none; z-index: 40;
+            font-size: 1.4rem; font-weight: 900; color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+            animation: fadeBanner 0.7s ease forwards;
+        }
+        @keyframes fadeBanner {
+            0% { opacity: 0; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0; transform: scale(1); }
+        }
 
         .stats-grid {
             display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
@@ -556,6 +621,10 @@
                 <span>📂 単語リスト:</span>
                 <input type="file" id="word-file" accept=".csv,.xlsx,.xls" onchange="importWordList(this)">
             </div>
+            <div class="setting-row" id="sentence-import-row">
+                <span>📖 文章CSV:</span>
+                <input type="file" id="sentence-file" accept=".csv" onchange="importSentenceList(this)">
+            </div>
             <div class="setting-row"><span></span><span id="import-status" class="import-status"></span></div>
             <div class="setting-row">
                 <span>🎵 BGM:</span>
@@ -586,6 +655,9 @@
         <div class="category-list">
             <div id="category-list-container" class="category-list-primary"></div>
 
+            <button id="sentence-mode-btn" class="stage-btn sentence-btn hidden" onclick="openSentenceModal()">
+                <span id="sentence-btn-text">📖 文章モード</span><span>▶</span>
+            </button>
             <button id="today-stats-btn" class="stage-btn stats-btn" onclick="openTodayStatsModal()">
                 <span id="today-stats-btn-text">📊 今日の成績</span><span>▶</span>
             </button>
@@ -616,6 +688,19 @@
         </div>
         <div class="modal-breadcrumb" id="level-modal-breadcrumb"></div>
         <div class="level-grid" id="level-grid"></div>
+    </div>
+
+    <!-- 文章モード -->
+    <div id="sentence-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">📖 文章モード（チャンク並べ替え）</div>
+            <button class="close-btn" onclick="closeSentenceModal()">✕</button>
+        </div>
+        <div class="modal-breadcrumb" id="sentence-modal-desc">日本語訳を見て、英語チャンクを順番にタップして文章を完成させます。（区切り: | または /）</div>
+        <div class="review-modal-actions">
+            <button class="review-start-btn" style="background:linear-gradient(135deg,#a855f7,#6366f1);" onclick="startChunkSession()">▶ セッション開始</button>
+        </div>
+        <div class="category-list word-list-modal" id="sentence-preview-list"></div>
     </div>
 
     <!-- 今日の成績 -->
@@ -722,6 +807,38 @@
         </div>
     </div>
 
+    <!-- 文章モード ゲーム画面 -->
+    <div id="screen-chunk" class="screen hidden">
+        <div class="header-bar">
+            <div class="hp-container"><div id="chunk-hp-bar" class="hp-bar"></div></div>
+            <div class="header-controls">
+                <button class="icon-btn" onclick="toggleChunkPause()">⏸</button>
+                <button class="icon-btn" onclick="quitChunkGame()">↩</button>
+            </div>
+            <div class="score-info">
+                <span id="chunk-combo-count">0</span> COMBO<br>
+                <span id="chunk-progress-count" style="font-size:0.72rem;color:#a78bfa;">1/5</span>
+            </div>
+        </div>
+        <div class="chunk-panel" id="chunk-panel">
+            <div class="chunk-jp-box">
+                <div class="chunk-jp-label">🇯🇵 日本語</div>
+                <div class="chunk-jp-text" id="chunk-jp"></div>
+            </div>
+            <div class="chunk-meta">
+                <span id="chunk-step-label">次のチャンクをタップ</span>
+                <span class="chunk-timer" id="chunk-timer">⏱ 45s</span>
+            </div>
+            <div class="chunk-built empty" id="chunk-built">ここに英文が完成していきます</div>
+            <div class="chunk-options" id="chunk-options"></div>
+        </div>
+        <div id="chunk-pause-overlay" class="pause-overlay hidden">
+            <div class="pause-title">PAUSED</div>
+            <button class="action-btn" style="width:160px;" onclick="toggleChunkPause()">再開</button>
+            <button class="action-btn" style="width:160px;background:#ef4444;" onclick="quitChunkGame()">終了</button>
+        </div>
+    </div>
+
     <!-- リザルト -->
     <div id="screen-result" class="screen hidden">
         <div id="result-title" class="result-title">STAGE CLEAR!</div>
@@ -743,6 +860,7 @@
 
 <script src="words-toefl-part1.js"></script>
 <script src="words-english-grammar-part1.js"></script>
+<script src="sentences-english-demo.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
     const WORDS_PER_LEVEL = 20;
@@ -752,12 +870,15 @@
         bgm: ['bgm.mp3', 'data/bgm.mp3', '10℃.mp3', 'data/10℃.mp3'],
         video: ['Shooting-star-effect.mp4', 'data/Shooting-star-effect.mp4'],
         toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
-        englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv']
+        englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
+        sentenceCsv: ['interview-sentences-demo.csv', 'data/interview-sentences-demo.csv']
     };
-    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv' };
+    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv', sentenceCsv: 'interview-sentences-demo.csv' };
     let bgmFileReady = false;
     const SPEED_PRESETS = { slow: 0.594, normal: 0.924, fast: 1.15 };
     const REVIEW_SESSION_MAX = 100;
+    const CHUNK_TIME_SEC = 45;
+    const CHUNK_SESSION_MAX = 20;
 
     const MOTIVATIONAL_QUOTES = [
         { text: '小さな一歩の積み重ねが、いちばん強い。', author: '' },
@@ -802,6 +923,10 @@
     let masteredPool = [];
     let levelStats = {};
     let customWordData = {};
+    let customSentenceData = [];
+
+    let chunkSession = null;
+    let chunkTimerInterval = null;
 
     let currentCategory = 'toefl';
     let currentPart = 1;
@@ -857,6 +982,7 @@
         masteredPool = JSON.parse(localStorage.getItem(storageKey('mastered_pool')) || '[]');
         levelStats = JSON.parse(localStorage.getItem(storageKey('level_stats')) || '{}');
         customWordData = JSON.parse(localStorage.getItem(storageKey('custom_words')) || '{}');
+        customSentenceData = JSON.parse(localStorage.getItem(storageKey('custom_sentences')) || 'null') || [];
         loadDailyStats();
     }
 
@@ -987,6 +1113,7 @@
         document.getElementById('mastered-modal')?.classList.add('hidden');
         document.getElementById('today-stats-modal')?.classList.add('hidden');
         document.getElementById('review-modal')?.classList.add('hidden');
+        document.getElementById('sentence-modal')?.classList.add('hidden');
     }
 
     function toggleSettingsPanel() {
@@ -1043,6 +1170,7 @@
         localStorage.setItem(storageKey('mastered_pool'), JSON.stringify(masteredPool));
         localStorage.setItem(storageKey('level_stats'), JSON.stringify(levelStats));
         localStorage.setItem(storageKey('custom_words'), JSON.stringify(customWordData));
+        localStorage.setItem(storageKey('custom_sentences'), JSON.stringify(customSentenceData));
     }
 
     function setStudyLang(lang) {
@@ -1100,6 +1228,7 @@
         resolvedAssets.video = video;
         resolvedAssets.toeflCsv = toeflCsv;
         resolvedAssets.englishCsv = englishCsv;
+        resolvedAssets.sentenceCsv = await resolveAssetUrl(ASSET_CANDIDATES.sentenceCsv);
         const videoEl = document.getElementById('fx-shooting-star');
         if (videoEl) videoEl.src = resolvedAssets.video;
     }
@@ -1347,6 +1476,20 @@
         if (container.children.length === 0) {
             container.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:12px;">カテゴリがありません</div>';
         }
+
+        const sentenceBtn = document.getElementById('sentence-mode-btn');
+        const sentenceImportRow = document.getElementById('sentence-import-row');
+        if (studyLang === 'en') {
+            sentenceBtn?.classList.remove('hidden');
+            sentenceImportRow?.style.display = '';
+            const pool = getSentencePool();
+            document.getElementById('sentence-btn-text').innerText =
+                pool.length > 0 ? `📖 文章モード (${pool.length}文)` : '📖 文章モード';
+        } else {
+            sentenceBtn?.classList.add('hidden');
+            if (sentenceImportRow) sentenceImportRow.style.display = 'none';
+        }
+
         updateTodayStatsButton();
     }
 
@@ -1656,6 +1799,7 @@
         else if (currentSessionType === 'exam_range') startExamRangeStage(currentSessionId);
         else if (currentSessionType === 'exam_all') startExamAllStage();
         else if (currentSessionType === 'review') startReviewStage();
+        else if (currentSessionType === 'chunk') startChunkSession();
     }
 
     function isSessionComplete() {
@@ -2075,6 +2219,321 @@
         return words;
     }
 
+    function getSentencePool() {
+        if (customSentenceData.length > 0) return customSentenceData;
+        return (window.ENGLISH_DEMO_SENTENCES || []).map(s => ({
+            jp: s.jp,
+            chunks: s.chunks.slice(),
+            full: s.chunks.join(' ')
+        }));
+    }
+
+    function openSentenceModal() {
+        const pool = getSentencePool();
+        document.getElementById('sentence-modal-desc').innerText =
+            pool.length > CHUNK_SESSION_MAX
+                ? `${pool.length}文登録中。1セッション最大${CHUNK_SESSION_MAX}文。日本語を見てチャンクを順にタップ。`
+                : `${pool.length}文。日本語を見て、英語チャンクを順番にタップして完成させます。`;
+        const list = document.getElementById('sentence-preview-list');
+        list.innerHTML = '';
+        if (pool.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">文章データがありません<br><span style="font-size:0.72rem;">設定からCSVを読み込むか、interview-sentences-demo.csv を確認してください</span></div>';
+        } else {
+            pool.slice(0, 12).forEach((s, i) => {
+                const div = document.createElement('div');
+                div.className = 'word-list-item review-item-row';
+                div.style.borderLeftColor = '#a855f7';
+                div.innerHTML = `<span><strong>${i + 1}.</strong> ${s.jp}<br><span style="font-size:0.68rem;color:#a78bfa;">${s.chunks.length}チャンク</span></span>`;
+                list.appendChild(div);
+            });
+            if (pool.length > 12) {
+                const more = document.createElement('div');
+                more.style.cssText = 'text-align:center;color:#a78bfa;font-size:0.72rem;padding:8px;';
+                more.innerText = `…他 ${pool.length - 12} 文`;
+                list.appendChild(more);
+            }
+        }
+        document.getElementById('sentence-modal').classList.remove('hidden');
+    }
+    function closeSentenceModal() { document.getElementById('sentence-modal').classList.add('hidden'); }
+
+    function stopChunkTimer() {
+        if (chunkTimerInterval) { clearInterval(chunkTimerInterval); chunkTimerInterval = null; }
+    }
+
+    function startChunkTimer() {
+        stopChunkTimer();
+        if (!chunkSession || isPaused) return;
+        chunkTimerInterval = setInterval(() => {
+            if (isPaused || !chunkSession) return;
+            chunkSession.timeLeft -= 1;
+            updateChunkTimerDisplay();
+            if (chunkSession.timeLeft <= 0) handleChunkTimeout();
+        }, 1000);
+    }
+
+    function updateChunkTimerDisplay() {
+        const el = document.getElementById('chunk-timer');
+        if (!el || !chunkSession) return;
+        el.innerText = `⏱ ${chunkSession.timeLeft}s`;
+        el.classList.toggle('urgent', chunkSession.timeLeft <= 10);
+    }
+
+    function handleChunkTimeout() {
+        combo = 0;
+        takeChunkDamage(30);
+        document.getElementById('chunk-combo-count').innerText = combo;
+        if (hp <= 0) return;
+        advanceChunkSentence(false);
+    }
+
+    function takeChunkDamage(amount) {
+        hp -= amount;
+        if (hp <= 0) { hp = 0; endChunkSession(false); }
+        document.getElementById('chunk-hp-bar').style.width = hp + '%';
+        triggerFlash('damage');
+    }
+
+    function startChunkSession() {
+        const pool = shuffleArray(getSentencePool()).slice(0, CHUNK_SESSION_MAX);
+        if (pool.length === 0) return;
+        closeSentenceModal();
+        currentSessionType = 'chunk';
+        currentSessionId = 'chunk';
+        isExamSession = false;
+        isPaused = false;
+        hp = 100; score = 0; combo = 0; maxCombo = 0;
+        chunkSession = {
+            sentences: pool,
+            index: 0,
+            built: [],
+            remaining: []
+        };
+        document.getElementById('chunk-pause-overlay').classList.add('hidden');
+        unlockAudio();
+        showScreen('screen-chunk');
+        startBGM();
+        loadChunkSentence();
+    }
+
+    function loadChunkSentence() {
+        if (!chunkSession || chunkSession.index >= chunkSession.sentences.length) {
+            endChunkSession(true);
+            return;
+        }
+        const s = chunkSession.sentences[chunkSession.index];
+        chunkSession.built = [];
+        chunkSession.remaining = shuffleArray(s.chunks);
+        chunkSession.timeLeft = CHUNK_TIME_SEC;
+        document.getElementById('chunk-jp').innerText = s.jp;
+        document.getElementById('chunk-built').innerText = 'ここに英文が完成していきます';
+        document.getElementById('chunk-built').classList.add('empty');
+        document.getElementById('chunk-step-label').innerText = `チャンク 1 / ${s.chunks.length}`;
+        document.getElementById('chunk-progress-count').innerText = `${chunkSession.index + 1}/${chunkSession.sentences.length}`;
+        document.getElementById('chunk-combo-count').innerText = combo;
+        document.getElementById('chunk-hp-bar').style.width = hp + '%';
+        renderChunkOptions();
+        updateChunkTimerDisplay();
+        startChunkTimer();
+    }
+
+    function renderChunkOptions() {
+        const container = document.getElementById('chunk-options');
+        container.innerHTML = '';
+        chunkSession.remaining.forEach(text => {
+            const btn = document.createElement('button');
+            btn.className = 'chunk-btn';
+            btn.innerText = text;
+            btn.onclick = () => onChunkTap(text, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    function onChunkTap(text, btnEl) {
+        if (isPaused || !chunkSession) return;
+        const s = chunkSession.sentences[chunkSession.index];
+        const expected = s.chunks[chunkSession.built.length];
+        if (text === expected) {
+            chunkSession.built.push(text);
+            playSuccessSE();
+            btnEl.classList.add('correct-flash');
+            setTimeout(() => btnEl.remove(), 320);
+            chunkSession.remaining = chunkSession.remaining.filter(t => t !== text);
+            const builtEl = document.getElementById('chunk-built');
+            builtEl.classList.remove('empty');
+            builtEl.innerText = chunkSession.built.join(' ');
+            document.getElementById('chunk-step-label').innerText =
+                chunkSession.built.length < s.chunks.length
+                    ? `チャンク ${chunkSession.built.length + 1} / ${s.chunks.length}`
+                    : '完成！';
+            if (chunkSession.built.length >= s.chunks.length) {
+                completeChunkSentence();
+            }
+        } else {
+            combo = 0;
+            document.getElementById('chunk-combo-count').innerText = combo;
+            btnEl.classList.remove('wrong-flash');
+            void btnEl.offsetWidth;
+            btnEl.classList.add('wrong-flash');
+            takeChunkDamage(15);
+        }
+    }
+
+    function completeChunkSentence() {
+        stopChunkTimer();
+        const s = chunkSession.sentences[chunkSession.index];
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        const pts = 100 + combo * 25;
+        score += pts;
+        document.getElementById('chunk-combo-count').innerText = combo;
+        playComboSE();
+        triggerFlash('success');
+        playTTS(s.full || s.chunks.join(' '));
+        recordDailyWordSeen(`chunk-${chunkSession.index}`);
+        recordDailyAnswer(true, combo);
+        const panel = document.getElementById('chunk-panel');
+        const banner = document.createElement('div');
+        banner.className = 'chunk-complete-banner';
+        banner.innerText = '✓ COMPLETE!';
+        panel.style.position = 'relative';
+        panel.appendChild(banner);
+        setTimeout(() => {
+            banner.remove();
+            advanceChunkSentence(true);
+        }, 750);
+    }
+
+    function advanceChunkSentence(wasComplete) {
+        if (!wasComplete) combo = 0;
+        chunkSession.index++;
+        if (chunkSession.index >= chunkSession.sentences.length) {
+            endChunkSession(true);
+        } else {
+            loadChunkSentence();
+        }
+    }
+
+    function toggleChunkPause() {
+        isPaused = !isPaused;
+        document.getElementById('chunk-pause-overlay').classList.toggle('hidden', !isPaused);
+        if (isPaused) {
+            stopChunkTimer();
+            stopBGM();
+        } else {
+            startChunkTimer();
+            startBGM();
+        }
+    }
+
+    function quitChunkGame() {
+        if (confirm('メインメニューに戻りますか？')) {
+            stopChunkTimer();
+            chunkSession = null;
+            isPaused = false;
+            showSelectScreen();
+        }
+    }
+
+    function endChunkSession(isClear) {
+        stopChunkTimer();
+        chunkSession = null;
+        isPaused = false;
+        if (isClear) recordDailySessionClear(score);
+        const titleEl = document.getElementById('result-title');
+        titleEl.innerText = isClear ? 'SESSION CLEAR!' : 'GAME OVER';
+        titleEl.className = `result-title ${isClear ? 'clear' : 'failed'}`;
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('max-combo').innerText = maxCombo;
+        document.getElementById('ranking-list').innerHTML =
+            '<div style="text-align:center;color:#a78bfa;padding:8px;">文章モード</div>';
+        document.getElementById('review-container').innerHTML =
+            '<div style="text-align:center;color:#c4b5fd;padding:12px;font-size:0.78rem;line-height:1.6;">チャンク並べ替えセッション完了<br>CSVは設定 → 📖 文章CSV から追加できます</div>';
+        showScreen('screen-result');
+        startBGM();
+    }
+
+    function splitChunkString(chunkStr) {
+        const s = chunkStr.trim();
+        if (!s) return [];
+        if (s.includes('|')) return s.split('|').map(c => c.trim()).filter(Boolean);
+        if (s.includes('/')) return s.split(/\s*\/\s*/).map(c => c.trim()).filter(Boolean);
+        return [s];
+    }
+
+    function parseSentenceRows(rows) {
+        const sentences = [];
+        const skipJp = ['日本語', 'japanese', 'jp', '訳'];
+        const skipEn = ['英語', 'english', 'チャンク', 'chunks'];
+        for (const row of rows) {
+            const jp = String(row[0] ?? '').trim();
+            const chunkStr = String(row[1] ?? '').trim();
+            if (!jp || !chunkStr) continue;
+            if (skipJp.some(h => jp.toLowerCase() === h.toLowerCase())) continue;
+            if (skipEn.some(h => chunkStr.toLowerCase().includes(h) && chunkStr.length < 30)) continue;
+            const chunks = splitChunkString(chunkStr);
+            if (chunks.length < 2) continue;
+            sentences.push({ jp, chunks, full: chunks.join(' ') });
+        }
+        return sentences;
+    }
+
+    function parseSentenceCsvText(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        return parseSentenceRows(lines.map(l => {
+            const idx = l.indexOf(',');
+            return idx >= 0 ? [l.slice(0, idx), l.slice(idx + 1)] : [l];
+        }));
+    }
+
+    async function fetchCsvSentences(path) {
+        try {
+            const res = await fetch(path);
+            if (!res.ok) return [];
+            return parseSentenceCsvText(await res.text());
+        } catch (e) {
+            console.warn('文章CSV読込失敗:', path, e);
+            return [];
+        }
+    }
+
+    async function ensureSentenceDataLoaded() {
+        if (!window.ENGLISH_DEMO_SENTENCES?.length) {
+            const fromCsv = await fetchCsvSentences(resolvedAssets.sentenceCsv);
+            if (fromCsv.length) window.ENGLISH_DEMO_SENTENCES = fromCsv;
+        }
+    }
+
+    function importSentenceList(input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        const statusEl = document.getElementById('import-status');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                const sentences = parseSentenceRows(lines.map(l => {
+                    const idx = l.indexOf(',');
+                    return idx >= 0 ? [l.slice(0, idx), l.slice(idx + 1)] : [l];
+                }));
+                if (sentences.length < 1) {
+                    statusEl.innerText = '有効な文章がありません（| または / で2チャンク以上）';
+                    return;
+                }
+                customSentenceData = sentences;
+                saveData();
+                updateMenuUI();
+                statusEl.innerText = `✓ ${sentences.length}文を読み込みました`;
+            } catch (err) {
+                statusEl.innerText = '文章CSV読込失敗';
+                console.error(err);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+        input.value = '';
+    }
+
     function parseCsvText(text) {
         const lines = text.split(/\r?\n/).filter(l => l.trim());
         return parseWordRows(lines.map(l => {
@@ -2164,6 +2623,7 @@
 
         resolveAllAssets().then(async () => {
             await ensureWordDataLoaded();
+            await ensureSentenceDataLoaded();
             updateMenuUI();
         });
     }
