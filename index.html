@@ -1516,7 +1516,7 @@
         const sentenceImportRow = document.getElementById('sentence-import-row');
         if (studyLang === 'en') {
             sentenceBtn?.classList.remove('hidden');
-            sentenceImportRow?.style.display = '';
+            if (sentenceImportRow) sentenceImportRow.style.display = '';
             const pool = getSentencePool();
             document.getElementById('sentence-btn-text').innerText =
                 pool.length > 0 ? `📖 文章モード (${pool.length}文)` : '📖 文章モード';
