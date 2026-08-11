@@ -564,6 +564,9 @@
             background: rgba(13, 2, 33, 0.92);
             backdrop-filter: blur(8px);
             display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         #audio-unlock-overlay.hidden { display: none !important; }
         .audio-unlock-box {
@@ -573,6 +576,7 @@
             border-radius: 20px;
             box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
             animation: unlockPulse 2s ease-in-out infinite;
+            pointer-events: none;
         }
         @keyframes unlockPulse {
             0%, 100% { transform: scale(1); }
@@ -587,7 +591,7 @@
 <div id="bg-aurora"></div>
 <div id="bg-glow"></div>
 
-<div id="audio-unlock-overlay">
+<div id="audio-unlock-overlay" onclick="unlockAudio()" role="button" aria-label="タップして開始">
     <div class="audio-unlock-box">
         <div style="font-size:2.2rem;">🎵</div>
         <div class="audio-unlock-title">タップして開始</div>
@@ -961,11 +965,23 @@
     let bgmStarted = false;
     let useUploadedBgm = false;
     let bgmSuspendedByHide = false;
+    let audioUnlockDone = false;
     let dailyStats = { date: '', wordsSeen: [], correct: 0, wrong: 0, maxCombo: 0, sessionsCleared: 0, totalScore: 0 };
     let studyStreak = { lastDate: '', current: 0, best: 0 };
 
     function storageKey(name) { return `hamaru_${studyLang}_${name}`; }
     function levelKey(cat, part, lvl) { return `${studyLang}_${cat}_${part}_${lvl}`; }
+
+    function loadJsonStorage(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw === null || raw === '') return fallback;
+            return JSON.parse(raw);
+        } catch (e) {
+            console.warn('storage parse failed:', key, e);
+            return fallback;
+        }
+    }
 
     function loadLangData() {
         if (studyLang === 'de' && !localStorage.getItem(storageKey('review_pool'))) {
@@ -978,11 +994,12 @@
             migrate('hamaru_level_stats', 'level_stats');
             migrate('hamaru_custom_words', 'custom_words');
         }
-        reviewPool = JSON.parse(localStorage.getItem(storageKey('review_pool')) || '[]');
-        masteredPool = JSON.parse(localStorage.getItem(storageKey('mastered_pool')) || '[]');
-        levelStats = JSON.parse(localStorage.getItem(storageKey('level_stats')) || '{}');
-        customWordData = JSON.parse(localStorage.getItem(storageKey('custom_words')) || '{}');
-        customSentenceData = JSON.parse(localStorage.getItem(storageKey('custom_sentences')) || 'null') || [];
+        reviewPool = loadJsonStorage(storageKey('review_pool'), []);
+        masteredPool = loadJsonStorage(storageKey('mastered_pool'), []);
+        levelStats = loadJsonStorage(storageKey('level_stats'), {});
+        customWordData = loadJsonStorage(storageKey('custom_words'), {});
+        customSentenceData = loadJsonStorage(storageKey('custom_sentences'), []);
+        if (!Array.isArray(customSentenceData)) customSentenceData = [];
         loadDailyStats();
     }
 
@@ -1245,6 +1262,8 @@
     }
 
     function unlockAudio() {
+        if (audioUnlockDone) return;
+        audioUnlockDone = true;
         hideAudioOverlay();
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1270,6 +1289,21 @@
         }
     }
 
+    function bindAudioUnlockOverlay() {
+        const overlay = document.getElementById('audio-unlock-overlay');
+        if (!overlay || overlay.dataset.bound) return;
+        overlay.dataset.bound = '1';
+        const startAudio = (e) => {
+            if (e?.type === 'touchstart') e.preventDefault();
+            unlockAudio();
+        };
+        overlay.addEventListener('click', startAudio);
+        overlay.addEventListener('touchstart', startAudio, { passive: false });
+        overlay.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); unlockAudio(); }
+        });
+    }
+
     function playSynthBGM() {
         if (!audioCtx || bgmVol <= 0) return;
         stopSynthBGM();
@@ -1292,8 +1326,9 @@
     }
     function stopSynthBGM() { if (synthBgmTimer) { clearInterval(synthBgmTimer); synthBgmTimer = null; } }
     function startBGM() {
-        if (bgmStarted && !customAudio.paused) return;
-        unlockAudio();
+        if (!audioUnlockDone) { unlockAudio(); return; }
+        if (bgmStarted && customAudio.src && !customAudio.paused) return;
+        resumeBGMPlayback();
     }
     function stopBGM() {
         if (customAudio.src) customAudio.pause();
@@ -2609,25 +2644,25 @@
     }
 
     async function bootApp() {
-        loadLangData();
-        if (studyLang === 'en') currentCategory = 'grammar';
-
-        const overlay = document.getElementById('audio-unlock-overlay');
-        const startAudio = () => unlockAudio();
-        overlay?.addEventListener('click', startAudio);
-        overlay?.addEventListener('touchstart', (e) => { e.preventDefault(); startAudio(); }, { passive: false });
-
-        updateLangUI();
-        applySpeedUI();
-        updateMenuUI();
-
-        resolveAllAssets().then(async () => {
-            await ensureWordDataLoaded();
-            await ensureSentenceDataLoaded();
+        bindAudioUnlockOverlay();
+        try {
+            loadLangData();
+            if (studyLang === 'en') currentCategory = 'grammar';
+            updateLangUI();
+            applySpeedUI();
             updateMenuUI();
-        });
+            resolveAllAssets().then(async () => {
+                await ensureWordDataLoaded();
+                await ensureSentenceDataLoaded();
+                updateMenuUI();
+            });
+        } catch (e) {
+            console.error('bootApp error:', e);
+            hideAudioOverlay();
+        }
     }
 
+    bindAudioUnlockOverlay();
     bootApp();
 </script>
 </body>
