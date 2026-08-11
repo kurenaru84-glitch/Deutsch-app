@@ -147,6 +147,15 @@
         .category-title { font-size: 1.15rem; font-weight: 900; color: #e9d5ff; }
         .category-desc { font-size: 0.72rem; color: #a78bfa; margin-top: 3px; }
         .stage-btn.review-btn { border-color: #f97316; background: rgba(249, 115, 22, 0.15); }
+        .review-modal-actions {
+            display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0;
+        }
+        .review-start-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+            background: linear-gradient(135deg, #f97316, #ef4444); color: #fff;
+            font-weight: 900; font-size: 0.85rem;
+        }
+        .word-list-item.review-item-row { border-left-color: #f97316; }
         .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
         .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
 
@@ -567,8 +576,8 @@
             <div class="setting-row">
                 <span>⚡ 速度:</span>
                 <div class="speed-options">
-                    <button class="speed-btn active" onclick="setSpeed('slow', this)">遅め</button>
-                    <button class="speed-btn" onclick="setSpeed('normal', this)">普通</button>
+                    <button class="speed-btn" onclick="setSpeed('slow', this)">遅め</button>
+                    <button class="speed-btn active" onclick="setSpeed('normal', this)">標準</button>
                     <button class="speed-btn" onclick="setSpeed('fast', this)">速い</button>
                 </div>
             </div>
@@ -580,8 +589,8 @@
             <button id="today-stats-btn" class="stage-btn stats-btn" onclick="openTodayStatsModal()">
                 <span id="today-stats-btn-text">📊 今日の成績</span><span>▶</span>
             </button>
-            <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="startReviewStage()">
-                <span id="review-btn-text">🔥 弱点・復習 (0件)</span><span>▶</span>
+            <button id="review-stage-btn" class="stage-btn review-btn hidden" onclick="openReviewModal()">
+                <span id="review-btn-text">🔥 弱点・復習リスト (0件)</span><span>▶</span>
             </button>
             <button id="mastered-list-btn" class="stage-btn mastered-btn" onclick="openMasteredModal()">
                 <span id="mastered-btn-text">✨ 完全に覚えた単語 (0件)</span><span>▶</span>
@@ -650,6 +659,19 @@
             <span id="stats-streak-main">🔥 連続学習 0日目</span>
             <div class="stats-streak-sub" id="stats-streak-sub">最高記録: 0日</div>
         </div>
+    </div>
+
+    <!-- 復習リスト -->
+    <div id="review-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">🔥 弱点・復習リスト</div>
+            <button class="close-btn" onclick="closeReviewModal()">✕</button>
+        </div>
+        <div class="modal-breadcrumb" id="review-modal-desc">リストからいつでも解除できます。テストは最大100語まで。</div>
+        <div class="review-modal-actions">
+            <button class="review-start-btn" onclick="startReviewStage()">▶ 復習テスト開始（最大100語）</button>
+        </div>
+        <div class="category-list word-list-modal" id="review-list"></div>
     </div>
 
     <!-- 覚えた単語リスト -->
@@ -734,7 +756,8 @@
     };
     let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv' };
     let bgmFileReady = false;
-    const SPEED_PRESETS = { slow: 0.37, normal: 0.594, fast: 0.924 };
+    const SPEED_PRESETS = { slow: 0.594, normal: 0.924, fast: 1.15 };
+    const REVIEW_SESSION_MAX = 100;
 
     const MOTIVATIONAL_QUOTES = [
         { text: '小さな一歩の積み重ねが、いちばん強い。', author: '' },
@@ -786,7 +809,9 @@
     let stagesData = {};
 
     let gameMode = 'jp-foreign';
-    let dropSpeed = SPEED_PRESETS.slow;
+    let dropSpeed = SPEED_PRESETS.normal;
+    let speedPreset = localStorage.getItem('hamaru_speed_preset') || 'normal';
+    if (SPEED_PRESETS[speedPreset]) dropSpeed = SPEED_PRESETS[speedPreset];
     let currentSessionType = 'level';
     let currentSessionId = 1;
     let isPaused = false;
@@ -961,6 +986,7 @@
         document.getElementById('level-modal')?.classList.add('hidden');
         document.getElementById('mastered-modal')?.classList.add('hidden');
         document.getElementById('today-stats-modal')?.classList.add('hidden');
+        document.getElementById('review-modal')?.classList.add('hidden');
     }
 
     function toggleSettingsPanel() {
@@ -1255,9 +1281,27 @@
     }
 
     function setSpeed(preset, btnEl) {
-        dropSpeed = SPEED_PRESETS[preset] || SPEED_PRESETS.slow;
+        speedPreset = preset;
+        dropSpeed = SPEED_PRESETS[preset] || SPEED_PRESETS.normal;
+        localStorage.setItem('hamaru_speed_preset', preset);
         document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-        btnEl.classList.add('active');
+        if (btnEl) btnEl.classList.add('active');
+    }
+
+    function applySpeedUI() {
+        const order = ['slow', 'normal', 'fast'];
+        document.querySelectorAll('.speed-btn').forEach((b, i) => {
+            b.classList.toggle('active', order[i] === speedPreset);
+        });
+    }
+
+    function shuffleArray(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
     }
 
     function setMode(mode) {
@@ -1275,7 +1319,7 @@
         const reviewBtn = document.getElementById('review-stage-btn');
         if (reviewPool.length > 0) {
             reviewBtn.classList.remove('hidden');
-            document.getElementById('review-btn-text').innerText = `🔥 弱点・復習 (${reviewPool.length}件)`;
+            document.getElementById('review-btn-text').innerText = `🔥 弱点・復習リスト (${reviewPool.length}件)`;
         } else reviewBtn.classList.add('hidden');
 
         document.getElementById('mastered-btn-text').innerText = `✨ 完全に覚えた単語 (${masteredPool.length}件)`;
@@ -1379,6 +1423,43 @@
         allExam.onclick = () => { closeLevelModal(); startExamAllStage(); };
         allExam.innerHTML = `<div class="lvl-num">🔥 総合試験</div><div class="lvl-count">全${totalWords}語 / 3ミス終了</div>`;
         grid.appendChild(allExam);
+    }
+
+    function openReviewModal() {
+        const list = document.getElementById('review-list');
+        list.innerHTML = '';
+        const activePool = reviewPool.filter(w => !isMastered(w.de));
+        const count = activePool.length;
+        document.getElementById('review-modal-desc').innerText =
+            count > REVIEW_SESSION_MAX
+                ? `${count}語登録中。テストはランダム${REVIEW_SESSION_MAX}語まで。リストからいつでも解除できます。`
+                : `${count}語登録中。リストからいつでも解除できます。`;
+        if (count === 0) {
+            list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">復習リストは空です</div>';
+        } else {
+            activePool.forEach(item => {
+                const de = item.de;
+                const jp = item.jp || findWordJp(de);
+                const div = document.createElement('div');
+                div.className = 'word-list-item review-item-row';
+                div.innerHTML = `<span><strong>${de}</strong> (${jp})</span>
+                    <button class="remove-btn" onclick="removeFromReview('${de.replace(/'/g, "\\'")}')">解除</button>`;
+                list.appendChild(div);
+            });
+        }
+        document.getElementById('review-modal').classList.remove('hidden');
+    }
+    function closeReviewModal() { document.getElementById('review-modal').classList.add('hidden'); }
+
+    function removeFromReview(de) {
+        reviewPool = reviewPool.filter(w => w.de !== de);
+        saveData();
+        updateMenuUI();
+        if (reviewPool.filter(w => !isMastered(w.de)).length === 0) {
+            closeReviewModal();
+        } else {
+            openReviewModal();
+        }
     }
 
     function openMasteredModal() {
@@ -1557,13 +1638,16 @@
 
     function startReviewStage() {
         if (reviewPool.length === 0) return;
+        closeReviewModal();
         currentSessionType = 'review';
         currentSessionId = 'review';
         isExamSession = false;
         suddenDeath = false;
         maxDamageAllowed = 100;
-        const pool = reviewPool.filter(w => !isMastered(w.de));
-        initSessionWords(pool.length ? pool : reviewPool, LEVEL_CLEARS_PER_WORD);
+        let pool = reviewPool.filter(w => !isMastered(w.de));
+        if (!pool.length) pool = reviewPool.slice();
+        pool = shuffleArray(pool).slice(0, REVIEW_SESSION_MAX);
+        initSessionWords(pool, LEVEL_CLEARS_PER_WORD);
         initGame();
     }
 
@@ -2075,6 +2159,7 @@
         overlay?.addEventListener('touchstart', (e) => { e.preventDefault(); startAudio(); }, { passive: false });
 
         updateLangUI();
+        applySpeedUI();
         updateMenuUI();
 
         resolveAllAssets().then(async () => {
