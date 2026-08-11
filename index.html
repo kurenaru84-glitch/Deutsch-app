@@ -1080,7 +1080,11 @@
         video: ['Shooting-star-effect.mp4', 'data/Shooting-star-effect.mp4'],
         toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
         englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
-        sentenceCsv: ['interview-sentences-demo.csv', 'data/interview-sentences-demo.csv']
+        sentenceCsv: [
+            'data/文章モード　面接編　英語 - interview-sentences-demo.csv',
+            'interview-sentences-demo.csv',
+            'data/interview-sentences-demo.csv'
+        ]
     };
     let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv', sentenceCsv: 'interview-sentences-demo.csv' };
     let bgmFileReady = false;
@@ -2899,7 +2903,7 @@
     }
 
     function splitChunkString(chunkStr) {
-        const s = chunkStr.trim();
+        const s = String(chunkStr ?? '').trim().replace(/^["']|["']$/g, '');
         if (!s) return [];
         if (s.includes('|')) return s.split('|').map(c => c.trim()).filter(Boolean);
         if (s.includes('/')) return s.split(/\s*\/\s*/).map(c => c.trim()).filter(Boolean);
@@ -2943,10 +2947,9 @@
     }
 
     async function ensureSentenceDataLoaded() {
-        if (!window.ENGLISH_DEMO_SENTENCES?.length) {
-            const fromCsv = await fetchCsvSentences(resolvedAssets.sentenceCsv);
-            if (fromCsv.length) window.ENGLISH_DEMO_SENTENCES = fromCsv;
-        }
+        const fromCsv = await fetchCsvSentences(resolvedAssets.sentenceCsv);
+        const current = window.ENGLISH_DEMO_SENTENCES?.length || 0;
+        if (fromCsv.length > current) window.ENGLISH_DEMO_SENTENCES = fromCsv;
     }
 
     function importSentenceList(input) {
