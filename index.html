@@ -1247,6 +1247,7 @@
 
 <script src="words-toefl-part1.js"></script>
 <script src="words-english-grammar-part1.js"></script>
+<script src="words-toeic-phrases.js"></script>
 <script src="sentences-english-demo.js"></script>
 <script src="sentences-duo-select.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -1259,6 +1260,7 @@
         video: ['Shooting-star-effect.mp4', 'data/Shooting-star-effect.mp4'],
         toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
         englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
+        toeicCsv: ['data/toeic-phrases.csv', 'toeic-phrases.csv'],
         sentenceCsv: [
             'data/duo-select-sentences-app.csv',
             'data/文章モード　面接編　英語 - interview-sentences-demo.csv',
@@ -1266,7 +1268,7 @@
             'data/interview-sentences-demo.csv'
         ]
     };
-    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv', sentenceCsv: 'interview-sentences-demo.csv' };
+    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv', toeicCsv: 'data/toeic-phrases.csv', sentenceCsv: 'interview-sentences-demo.csv' };
     let bgmFileReady = false;
     const SPEED_PRESETS = { slow: 0.594, normal: 0.924, fast: 1.15 };
     const REVIEW_SESSION_MAX = 100;
@@ -1294,7 +1296,7 @@
 
     const LANG_META = {
         de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語学習', label: 'ドイツ語', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
-        en: { title: 'ENGLISH HAMARU', subtitle: '英語 構文学習', label: '英語', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
+        en: { title: 'ENGLISH HAMARU', subtitle: '英語 フレーズ・構文', label: '英語', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
     };
 
     const ALL_CATEGORIES = {
@@ -1308,6 +1310,12 @@
             id: 'grammar', title: '構文', icon: '📝', langs: ['en'],
             parts: {
                 1: { id: 1, title: 'Part 1', desc: '構文 1〜450', defaultWords: () => window.ENGLISH_GRAMMAR_PART1_WORDS || [] }
+            }
+        },
+        toeic_phrases: {
+            id: 'toeic_phrases', title: 'TOEIC金フレ', icon: '🥇', langs: ['en'],
+            parts: {
+                1: { id: 1, title: 'Part 1', desc: 'フレーズ 1〜1000', defaultWords: () => window.TOEIC_PHRASE_WORDS || [] }
             }
         }
     };
@@ -1652,15 +1660,17 @@
     }
 
     async function resolveAllAssets() {
-        const [video, toeflCsv, englishCsv] = await Promise.all([
+        const [video, toeflCsv, englishCsv, toeicCsv] = await Promise.all([
             resolveAssetUrl(ASSET_CANDIDATES.video),
             resolveAssetUrl(ASSET_CANDIDATES.toeflCsv),
-            resolveAssetUrl(ASSET_CANDIDATES.englishCsv)
+            resolveAssetUrl(ASSET_CANDIDATES.englishCsv),
+            resolveAssetUrl(ASSET_CANDIDATES.toeicCsv)
         ]);
         resolvedAssets.bgm = ASSET_CANDIDATES.bgm[0];
         resolvedAssets.video = video;
         resolvedAssets.toeflCsv = toeflCsv;
         resolvedAssets.englishCsv = englishCsv;
+        resolvedAssets.toeicCsv = toeicCsv;
         resolvedAssets.sentenceCsv = await resolveAssetUrl(ASSET_CANDIDATES.sentenceCsv);
         const videoEl = document.getElementById('fx-shooting-star');
         if (videoEl) videoEl.src = resolvedAssets.video;
@@ -3619,6 +3629,9 @@
         if (!window.ENGLISH_GRAMMAR_PART1_WORDS?.length) {
             window.ENGLISH_GRAMMAR_PART1_WORDS = await fetchCsvWords(resolvedAssets.englishCsv);
         }
+        if (!window.TOEIC_PHRASE_WORDS?.length) {
+            window.TOEIC_PHRASE_WORDS = await fetchCsvWords(resolvedAssets.toeicCsv);
+        }
     }
 
     function importWordList(input) {
@@ -3671,7 +3684,7 @@
         bindAudioUnlockOverlay();
         try {
             loadLangData();
-            if (studyLang === 'en') currentCategory = 'grammar';
+            if (studyLang === 'en') currentCategory = 'toeic_phrases';
             updateLangUI();
             applySpeedUI();
             updateMenuUI();
