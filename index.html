@@ -175,6 +175,7 @@
         .supermemory-card {
             width: 100%; height: clamp(148px, 34vw, 210px);
             cursor: default; -webkit-tap-highlight-color: transparent;
+            position: relative; touch-action: pan-y;
         }
         .supermemory-inner {
             position: relative; width: 100%; height: 100%;
@@ -215,6 +216,27 @@
         }
         .supermemory-back .supermemory-text {
             font-size: clamp(1rem, 4.8vw, 1.65rem);
+        }
+        .supermemory-actions {
+            display: flex; gap: 8px; width: 100%; flex-shrink: 0;
+        }
+        .supermemory-actions button {
+            flex: 1; border: none; border-radius: 12px; padding: 11px 8px;
+            font-weight: 900; font-size: 0.82rem; cursor: pointer;
+        }
+        .supermemory-actions .btn-mastered {
+            background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+        }
+        .supermemory-actions .btn-skip {
+            background: rgba(148, 163, 184, 0.25); color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+        .supermemory-card.swiping { transition: none; }
+        .supermemory-card.swipe-hint-left::after {
+            content: '⏭ スキップ';
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            font-size: 0.62rem; font-weight: 900; color: rgba(251, 191, 36, 0.85);
+            pointer-events: none;
         }
         .supermemory-pause-btn {
             align-self: center;
@@ -1143,7 +1165,7 @@
         <div class="supermemory-panel">
             <div class="supermemory-hint" id="sm-hint">自動進行中 — 表 → 裏 → 次へ</div>
             <div class="supermemory-scene">
-                <div class="supermemory-card">
+                <div class="supermemory-card" id="sm-card">
                     <div class="supermemory-inner" id="sm-inner">
                         <div class="supermemory-face supermemory-front">
                             <div class="supermemory-face-label" id="sm-front-label">🇯🇵 日本語</div>
@@ -1155,6 +1177,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="supermemory-actions">
+                <button class="btn-mastered" onclick="superMemoryMarkLearned()">✨ 覚えた</button>
+                <button class="btn-skip" onclick="superMemorySkip()">⏭ スキップ</button>
             </div>
             <button class="supermemory-pause-btn" id="sm-pause-btn" onclick="toggleSuperMemoryPause()">⏸ 一時停止</button>
         </div>
@@ -2236,6 +2262,7 @@
             sessionStats[w.de] = { word: w, wrong: 0, totalTime: 0, count: 1 };
         });
         updateSuperMemoryLabels();
+        initSuperMemorySwipe();
         showScreen('screen-supermemory');
         startBGM();
         loadSuperMemoryCard();
@@ -2252,6 +2279,83 @@
         clearSuperMemoryTimer();
         if (!superMemorySession || superMemorySession.paused) return;
         superMemoryTimer = setTimeout(fn, delayMs);
+    }
+
+    function resetSuperMemoryCardSwipe() {
+        const card = document.getElementById('sm-card');
+        if (!card) return;
+        card.classList.remove('swiping', 'swipe-hint-left');
+        card.style.transform = '';
+        card.style.opacity = '';
+    }
+
+    function advanceSuperMemoryCard() {
+        clearSuperMemoryTimer();
+        if (!superMemorySession) return;
+        resetSuperMemoryCardSwipe();
+        superMemorySession.index++;
+        loadSuperMemoryCard();
+    }
+
+    function superMemoryMarkLearned() {
+        if (!superMemorySession) return;
+        const w = superMemorySession.words[superMemorySession.index];
+        if (w && !isMastered(w.de)) {
+            masteredPool.push({ de: w.de, jp: w.jp });
+            reviewPool = reviewPool.filter(x => x.de !== w.de);
+            saveData();
+            updateMenuUI();
+        }
+        const hint = document.getElementById('sm-hint');
+        if (hint) hint.innerText = '✨ 覚えた — 次へ';
+        advanceSuperMemoryCard();
+    }
+
+    function superMemorySkip() {
+        if (!superMemorySession) return;
+        advanceSuperMemoryCard();
+    }
+
+    function initSuperMemorySwipe() {
+        const card = document.getElementById('sm-card');
+        if (!card || card.dataset.swipeBound) return;
+        card.dataset.swipeBound = '1';
+        let startX = 0, startY = 0, tracking = false;
+
+        card.addEventListener('touchstart', (e) => {
+            if (!superMemorySession) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            tracking = true;
+        }, { passive: true });
+
+        card.addEventListener('touchmove', (e) => {
+            if (!tracking || !superMemorySession) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            if (Math.abs(dx) < 12) return;
+            card.classList.add('swiping');
+            card.style.transform = `translateX(${dx * 0.45}px)`;
+            card.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 280));
+            card.classList.toggle('swipe-hint-left', dx < -24);
+        }, { passive: true });
+
+        card.addEventListener('touchend', (e) => {
+            if (!tracking) return;
+            tracking = false;
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (superMemorySession && Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                superMemorySkip();
+            } else {
+                resetSuperMemoryCardSwipe();
+            }
+        }, { passive: true });
+
+        card.addEventListener('touchcancel', () => {
+            tracking = false;
+            resetSuperMemoryCardSwipe();
+        }, { passive: true });
     }
 
     function fitSuperMemoryText(el, text) {
@@ -2271,12 +2375,15 @@
         const isJpFront = superMemorySession.direction === 'jp-foreign';
         superMemorySession.phase = 'front';
         document.getElementById('sm-inner').classList.remove('flipped');
+        resetSuperMemoryCardSwipe();
         fitSuperMemoryText(document.getElementById('sm-front-text'), isJpFront ? w.jp : w.de);
         fitSuperMemoryText(document.getElementById('sm-back-text'), isJpFront ? w.de : w.jp);
         document.getElementById('sm-progress').innerText =
             `${superMemorySession.index + 1}/${superMemorySession.words.length}`;
         document.getElementById('sm-hint').innerText =
-            superMemorySession.paused ? '一時停止中' : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 → 次へ`;
+            superMemorySession.paused
+                ? '一時停止中'
+                : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 · ←スワイプでスキップ`;
 
         scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
             if (!superMemorySession || superMemorySession.paused) return;
@@ -2285,8 +2392,7 @@
             playTTS(isJpFront ? w.de : w.jp);
             scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                 if (!superMemorySession || superMemorySession.paused) return;
-                superMemorySession.index++;
-                loadSuperMemoryCard();
+                advanceSuperMemoryCard();
             });
         });
     }
@@ -2311,15 +2417,13 @@
                     playTTS(isJpFront ? w.de : w.jp);
                     scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                         if (!superMemorySession || superMemorySession.paused) return;
-                        superMemorySession.index++;
-                        loadSuperMemoryCard();
+                        advanceSuperMemoryCard();
                     });
                 });
             } else {
                 scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                     if (!superMemorySession || superMemorySession.paused) return;
-                    superMemorySession.index++;
-                    loadSuperMemoryCard();
+                    advanceSuperMemoryCard();
                 });
             }
         }
