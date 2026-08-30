@@ -155,6 +155,11 @@
             background: linear-gradient(135deg, #f97316, #ef4444); color: #fff;
             font-weight: 900; font-size: 0.85rem;
         }
+        .review-supermemory-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #422006;
+            font-weight: 900; font-size: 0.85rem;
+        }
         .word-list-item.review-item-row { border-left-color: #f97316; }
         .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
         .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
@@ -1054,7 +1059,8 @@
         </div>
         <div class="modal-breadcrumb" id="review-modal-desc">リストからいつでも解除できます。テストは最大100語まで。</div>
         <div class="review-modal-actions">
-            <button class="review-start-btn" onclick="startReviewStage()">▶ 復習テスト開始（最大100語）</button>
+            <button class="review-start-btn" onclick="startReviewStage()">▶ 復習テスト（最大100語）</button>
+            <button class="review-supermemory-btn" onclick="startReviewSuperMemory()">⚡ スーパー暗記</button>
         </div>
         <div class="category-list word-list-modal" id="review-list"></div>
     </div>
@@ -2037,8 +2043,8 @@
         const count = activePool.length;
         document.getElementById('review-modal-desc').innerText =
             count > REVIEW_SESSION_MAX
-                ? `${count}語登録中。テストはランダム${REVIEW_SESSION_MAX}語まで。リストからいつでも解除できます。`
-                : `${count}語登録中。リストからいつでも解除できます。`;
+                ? `${count}語登録中。テスト・スーパー暗記はランダム${REVIEW_SESSION_MAX}語まで。`
+                : `${count}語登録中。復習テストまたは⚡スーパー暗記を選べます。`;
         if (count === 0) {
             list.innerHTML = '<div style="text-align:center;color:#a78bfa;padding:20px;">復習リストは空です</div>';
         } else {
@@ -2138,7 +2144,14 @@
         openCategoryModal(cats[0].id);
     }
 
+    function getReviewSuperMemoryPool() {
+        let pool = reviewPool.filter(w => !isMastered(w.de));
+        if (!pool.length) pool = reviewPool.slice();
+        return shuffleArray(pool).slice(0, REVIEW_SESSION_MAX);
+    }
+
     function getSuperMemoryWordPool(pick) {
+        if (pick.type === 'review') return getReviewSuperMemoryPool();
         rebuildPartData(currentCategory, currentPart);
         if (pick.type === 'level') {
             return filterNonMastered(stagesData[pick.id] || []);
@@ -2158,6 +2171,7 @@
     }
 
     function getSuperMemoryPickLabel(pick) {
+        if (pick.type === 'review') return '🔥 弱点・復習リスト';
         if (pick.type === 'level') return `Level ${pick.id}（${(stagesData[pick.id] || []).length}語）`;
         if (pick.type === 'exam_range') {
             const startLvl = (pick.id - 1) * LEVELS_PER_EXAM + 1;
@@ -2191,16 +2205,19 @@
 
     function openSuperMemorySettings(pick) {
         superMemoryPick = pick;
-        rebuildPartData(currentCategory, currentPart);
+        if (pick.type !== 'review') rebuildPartData(currentCategory, currentPart);
         const pool = getSuperMemoryWordPool(pick);
         if (!pool.length) {
-            alert('単語データが読み込めていません。');
+            alert(pick.type === 'review' ? '復習リストが空です。' : '単語データが読み込めていません。');
             return;
         }
-        const masteredSkip = pool.length < (pick.type === 'level'
-            ? (stagesData[pick.id] || []).length
-            : pick.type === 'exam_range' ? LEVELS_PER_EXAM * WORDS_PER_LEVEL : masterPool.length);
-        const skipNote = masteredSkip ? ' · ✨覚えた単語は除外' : '';
+        let skipNote = '';
+        if (pick.type !== 'review') {
+            const masteredSkip = pool.length < (pick.type === 'level'
+                ? (stagesData[pick.id] || []).length
+                : pick.type === 'exam_range' ? LEVELS_PER_EXAM * WORDS_PER_LEVEL : masterPool.length);
+            if (masteredSkip) skipNote = ' · ✨覚えた単語は除外';
+        }
         document.getElementById('supermemory-settings-desc').innerText =
             `${getSuperMemoryPickLabel(pick)} · ${pool.length}語${skipNote}`;
         loadSuperMemorySettingsUI();
@@ -2456,11 +2473,15 @@
 
     function repeatSuperMemorySession() {
         if (!superMemoryPendingConfig) return;
-        currentCategory = superMemoryPendingConfig.category;
-        currentPart = superMemoryPendingConfig.part;
+        if (superMemoryPendingConfig.pick.type !== 'review') {
+            currentCategory = superMemoryPendingConfig.category;
+            currentPart = superMemoryPendingConfig.part;
+        }
         const words = getSuperMemoryWordPool(superMemoryPendingConfig.pick);
         if (!words.length) {
-            alert('表示する単語がありません（すべて覚えた状態かもしれません）');
+            alert(superMemoryPendingConfig.pick.type === 'review'
+                ? '復習リストが空です。'
+                : '表示する単語がありません（すべて覚えた状態かもしれません）');
             return;
         }
         launchSuperMemorySession(words, superMemoryPendingConfig);
@@ -2608,6 +2629,16 @@
         rebuildPartData(currentCategory, currentPart);
         initSessionWords(masterPool.slice(), 1);
         initGame();
+    }
+
+    function startReviewSuperMemory() {
+        const pool = getReviewSuperMemoryPool();
+        if (!pool.length) {
+            alert('復習リストが空です。');
+            return;
+        }
+        closeReviewModal();
+        openSuperMemorySettings({ type: 'review', id: 'review' });
     }
 
     function startReviewStage() {
