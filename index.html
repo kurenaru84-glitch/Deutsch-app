@@ -159,6 +159,37 @@
         .stage-btn.mastered-btn { border-color: #10b981; background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
         .stage-btn.stats-btn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.12); color: #bae6fd; }
         .stage-btn.sentence-btn { border-color: #c084fc; background: rgba(192, 132, 252, 0.15); color: #e9d5ff; }
+        .stage-btn.supermemory-btn { border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); color: #fde68a; }
+
+        /* スーパー暗記モード */
+        .supermemory-panel {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 14px; padding: 8px 12px 16px; min-height: 0;
+        }
+        .supermemory-hint { font-size: 0.72rem; color: #fbbf24; font-weight: 800; text-align: center; }
+        .supermemory-card { cursor: default; max-width: 100%; }
+        .supermemory-card .flashcard-face { font-size: clamp(1.1rem, 4.5vw, 1.55rem); line-height: 1.45; }
+        .supermemory-pause-btn {
+            padding: 10px 24px; border: 2px solid rgba(251, 191, 36, 0.5); border-radius: 12px;
+            background: rgba(251, 191, 36, 0.12); color: #fde68a; font-weight: 900; font-size: 0.85rem; cursor: pointer;
+        }
+        .supermemory-settings-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+        .supermemory-sec-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .supermemory-sec-row label { font-size: 0.78rem; color: #fde68a; font-weight: 800; min-width: 88px; }
+        .supermemory-sec-row input[type="number"] {
+            width: 72px; padding: 8px; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.4);
+            background: rgba(20, 12, 40, 0.9); color: #fff; font-weight: 800; font-size: 0.9rem;
+        }
+        .supermemory-preset-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+        .supermemory-preset-btns button {
+            flex: 1; min-width: 80px; padding: 8px 6px; border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.35);
+            background: rgba(251, 191, 36, 0.1); color: #fde68a; font-size: 0.68rem; font-weight: 800; cursor: pointer;
+        }
+        .supermemory-start-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #422006;
+            font-weight: 900; font-size: 0.95rem;
+        }
 
         /* 文章モード（チャンク並べ替え） */
         .chunk-panel {
@@ -812,6 +843,9 @@
         <div class="category-list">
             <div id="category-list-container" class="category-list-primary"></div>
 
+            <button id="supermemory-btn" class="stage-btn supermemory-btn" onclick="openSuperMemoryPicker()">
+                <span>⚡ スーパー暗記</span><span>▶</span>
+            </button>
             <button id="sentence-mode-btn" class="stage-btn sentence-btn hidden" onclick="openSentenceModal()">
                 <span id="sentence-btn-text">📖 文章モード</span><span>▶</span>
             </button>
@@ -864,6 +898,38 @@
             <button id="sentence-page-next" onclick="changeSentenceListPage(1)">▶</button>
         </div>
         <div class="category-list word-list-modal" id="sentence-preview-list"></div>
+    </div>
+
+    <!-- スーパー暗記 設定 -->
+    <div id="supermemory-settings-modal" class="modal-overlay hidden">
+        <div class="modal-header">
+            <div class="modal-title">⚡ スーパー暗記 設定</div>
+            <button class="close-btn" onclick="closeSuperMemorySettings()">✕</button>
+        </div>
+        <div class="modal-breadcrumb" id="supermemory-settings-desc">対象リストを確認して開始</div>
+        <div class="supermemory-settings-body">
+            <div class="supermemory-sec-row">
+                <label>表（問題）</label>
+                <input type="number" id="sm-setting-front" min="0.5" max="15" step="0.5" value="2">
+                <span style="font-size:0.75rem;color:#a78bfa;font-weight:800;">秒</span>
+            </div>
+            <div class="supermemory-sec-row">
+                <label>裏（答え）</label>
+                <input type="number" id="sm-setting-back" min="0.5" max="15" step="0.5" value="2">
+                <span style="font-size:0.75rem;color:#a78bfa;font-weight:800;">秒</span>
+            </div>
+            <div class="supermemory-preset-btns">
+                <button type="button" onclick="setSuperMemoryPreset(1, 1)">超速 1+1秒</button>
+                <button type="button" onclick="setSuperMemoryPreset(2, 2)">標準 2+2秒</button>
+                <button type="button" onclick="setSuperMemoryPreset(3, 3)">ゆっくり 3+3秒</button>
+            </div>
+            <div style="font-size:0.68rem;color:#a78bfa;font-weight:800;margin-top:2px;">表示方向</div>
+            <div class="mode-toggle-container" style="margin:0;">
+                <button id="sm-dir-jp-foreign" class="mode-btn active" onclick="setSuperMemoryDirection('jp-foreign')">日 ➔ 外国語</button>
+                <button id="sm-dir-foreign-jp" class="mode-btn" onclick="setSuperMemoryDirection('foreign-jp')">外国語 ➔ 日</button>
+            </div>
+        </div>
+        <button class="supermemory-start-btn" onclick="confirmSuperMemoryStart()">▶ 自動暗記を開始</button>
     </div>
 
     <!-- 今日の成績 -->
@@ -1014,6 +1080,37 @@
         </div>
     </div>
 
+    <!-- スーパー暗記モード -->
+    <div id="screen-supermemory" class="screen hidden">
+        <div class="header-bar">
+            <div class="hp-container" style="visibility:hidden;"><div class="hp-bar"></div></div>
+            <div class="header-controls">
+                <button class="icon-btn" onclick="quitSuperMemory()">↩</button>
+            </div>
+            <div class="score-info">
+                <span id="sm-progress" style="font-size:0.85rem;">1/20</span>
+            </div>
+        </div>
+        <div class="supermemory-panel">
+            <div class="supermemory-hint" id="sm-hint">自動進行中 — 表 → 裏 → 次へ</div>
+            <div class="flashcard-scene">
+                <div class="flashcard supermemory-card">
+                    <div class="flashcard-inner" id="sm-inner">
+                        <div class="flashcard-face flashcard-front">
+                            <div class="flashcard-face-label" id="sm-front-label">🇯🇵 日本語</div>
+                            <div id="sm-front-text"></div>
+                        </div>
+                        <div class="flashcard-face flashcard-back">
+                            <div class="flashcard-face-label" id="sm-back-label">🇩🇪 外国語</div>
+                            <div id="sm-back-text"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="supermemory-pause-btn" id="sm-pause-btn" onclick="toggleSuperMemoryPause()">⏸ 一時停止</button>
+        </div>
+    </div>
+
     <!-- 暗記カードモード -->
     <div id="screen-flashcard" class="screen hidden">
         <div class="header-bar">
@@ -1145,6 +1242,13 @@
     let chunkTimerInterval = null;
     let flashcardSession = null;
     let sentenceListPage = 0;
+
+    let levelPickerMode = 'game';
+    let superMemoryPick = null;
+    let superMemorySession = null;
+    let superMemoryTimer = null;
+    let superMemoryDirection = localStorage.getItem('hamaru_supermemory_direction') || 'jp-foreign';
+    let superMemoryPendingConfig = null;
 
     let currentCategory = 'toefl';
     let currentPart = 1;
@@ -1356,6 +1460,7 @@
         document.getElementById('today-stats-modal')?.classList.add('hidden');
         document.getElementById('review-modal')?.classList.add('hidden');
         document.getElementById('sentence-modal')?.classList.add('hidden');
+        document.getElementById('supermemory-settings-modal')?.classList.add('hidden');
     }
 
     function toggleSettingsPanel() {
@@ -1767,7 +1872,8 @@
         currentCategory = categoryId;
         const cat = ALL_CATEGORIES[categoryId];
         document.getElementById('part-modal-title').innerText = `${cat.icon} ${cat.title}`;
-        document.getElementById('part-modal-breadcrumb').innerText = 'Part を選択';
+        document.getElementById('part-modal-breadcrumb').innerText =
+            levelPickerMode === 'supermemory' ? '⚡ スーパー暗記 — Part を選択' : 'Part を選択';
         const list = document.getElementById('part-list');
         list.innerHTML = '';
         Object.values(cat.parts).forEach(part => {
@@ -1784,7 +1890,10 @@
         });
         document.getElementById('part-modal').classList.remove('hidden');
     }
-    function closePartModal() { document.getElementById('part-modal').classList.add('hidden'); }
+    function closePartModal() {
+        document.getElementById('part-modal').classList.add('hidden');
+        levelPickerMode = 'game';
+    }
 
     function openLevelModal(categoryId, partId) {
         currentCategory = categoryId;
@@ -1793,8 +1902,12 @@
             const { words, levelCount } = rebuildPartData(categoryId, partId);
             const cat = ALL_CATEGORIES[categoryId];
             const part = cat.parts[partId];
-            document.getElementById('level-modal-title').innerText = `${part.title} — Level選択`;
-            document.getElementById('level-modal-breadcrumb').innerText = `${cat.title} › ${part.title} › ${words.length}語`;
+            document.getElementById('level-modal-title').innerText =
+                levelPickerMode === 'supermemory' ? `${part.title} — ⚡スーパー暗記` : `${part.title} — Level選択`;
+            document.getElementById('level-modal-breadcrumb').innerText =
+                levelPickerMode === 'supermemory'
+                    ? `${cat.title} › ${part.title} › 範囲を選択（20語 / 100語）`
+                    : `${cat.title} › ${part.title} › ${words.length}語`;
             buildLevelGridUI(levelCount, words.length);
             document.getElementById('level-modal').classList.remove('hidden');
         });
@@ -1817,7 +1930,7 @@
             const wordCount = stagesData[i]?.length ?? 0;
             const card = document.createElement('div');
             card.className = `level-card ${stat.cleared ? 'cleared' : ''}`;
-            card.onclick = () => { closeLevelModal(); startLevelStage(i); };
+            card.onclick = () => onLevelCardClick(i);
             const starsStr = stat.cleared ? '★'.repeat(stat.stars) + '☆'.repeat(3 - stat.stars) : '未クリア';
             card.innerHTML = `<div class="lvl-num">Level ${i}</div><div class="lvl-stars">${starsStr}</div><div class="lvl-count">${wordCount} 単語</div>`;
             grid.appendChild(card);
@@ -1826,14 +1939,14 @@
                 const rangeStart = i - LEVELS_PER_EXAM + 1;
                 const examCard = document.createElement('div');
                 examCard.className = 'level-card exam-card';
-                examCard.onclick = () => { closeLevelModal(); startExamRangeStage(i / LEVELS_PER_EXAM); };
+                examCard.onclick = () => onExamRangeCardClick(i / LEVELS_PER_EXAM);
                 examCard.innerHTML = `<div class="lvl-num">🏆 試験 Lv ${rangeStart}–${i}</div><div class="lvl-count">${LEVELS_PER_EXAM * WORDS_PER_LEVEL}語 / 1ミス終了</div>`;
                 grid.appendChild(examCard);
             }
         }
         const allExam = document.createElement('div');
         allExam.className = 'level-card exam-all-card';
-        allExam.onclick = () => { closeLevelModal(); startExamAllStage(); };
+        allExam.onclick = () => onExamAllCardClick();
         allExam.innerHTML = `<div class="lvl-num">🔥 総合試験</div><div class="lvl-count">全${totalWords}語 / 3ミス終了</div>`;
         grid.appendChild(allExam);
     }
@@ -1908,7 +2021,290 @@
         return filtered.length > 0 ? filtered : list;
     }
 
+    function onLevelCardClick(levelNum) {
+        closeLevelModal();
+        if (levelPickerMode === 'supermemory') {
+            openSuperMemorySettings({ type: 'level', id: levelNum });
+        } else {
+            startLevelStage(levelNum);
+        }
+    }
+
+    function onExamRangeCardClick(rangeIdx) {
+        closeLevelModal();
+        if (levelPickerMode === 'supermemory') {
+            openSuperMemorySettings({ type: 'exam_range', id: rangeIdx });
+        } else {
+            startExamRangeStage(rangeIdx);
+        }
+    }
+
+    function onExamAllCardClick() {
+        closeLevelModal();
+        if (levelPickerMode === 'supermemory') {
+            openSuperMemorySettings({ type: 'exam_all', id: 'all' });
+        } else {
+            startExamAllStage();
+        }
+    }
+
+    function openSuperMemoryPicker() {
+        levelPickerMode = 'supermemory';
+        const cats = getCategoriesForLang(studyLang);
+        if (!cats.length) {
+            alert('単語カテゴリがありません');
+            levelPickerMode = 'game';
+            return;
+        }
+        openCategoryModal(cats[0].id);
+    }
+
+    function getSuperMemoryWordPool(pick) {
+        rebuildPartData(currentCategory, currentPart);
+        if (pick.type === 'level') {
+            return filterNonMastered(stagesData[pick.id] || []);
+        }
+        if (pick.type === 'exam_range') {
+            let rawList = [];
+            const startLvl = (pick.id - 1) * LEVELS_PER_EXAM + 1;
+            for (let l = startLvl; l < startLvl + LEVELS_PER_EXAM; l++) {
+                if (stagesData[l]) rawList = rawList.concat(stagesData[l]);
+            }
+            return filterNonMastered(rawList);
+        }
+        if (pick.type === 'exam_all') {
+            return filterNonMastered(masterPool.slice());
+        }
+        return [];
+    }
+
+    function getSuperMemoryPickLabel(pick) {
+        if (pick.type === 'level') return `Level ${pick.id}（${(stagesData[pick.id] || []).length}語）`;
+        if (pick.type === 'exam_range') {
+            const startLvl = (pick.id - 1) * LEVELS_PER_EXAM + 1;
+            return `試験 Lv ${startLvl}–${startLvl + LEVELS_PER_EXAM - 1}（${LEVELS_PER_EXAM * WORDS_PER_LEVEL}語）`;
+        }
+        return `総合（全${masterPool.length}語）`;
+    }
+
+    function loadSuperMemorySettingsUI() {
+        const front = localStorage.getItem('hamaru_supermemory_front_sec') || '2';
+        const back = localStorage.getItem('hamaru_supermemory_back_sec') || '2';
+        document.getElementById('sm-setting-front').value = front;
+        document.getElementById('sm-setting-back').value = back;
+        setSuperMemoryDirection(superMemoryDirection, false);
+    }
+
+    function setSuperMemoryDirection(dir, save = true) {
+        superMemoryDirection = dir;
+        if (save) localStorage.setItem('hamaru_supermemory_direction', dir);
+        const meta = LANG_META[studyLang];
+        document.getElementById('sm-dir-jp-foreign').className = `mode-btn ${dir === 'jp-foreign' ? 'active' : ''}`;
+        document.getElementById('sm-dir-foreign-jp').className = `mode-btn ${dir === 'foreign-jp' ? 'active' : ''}`;
+        document.getElementById('sm-dir-jp-foreign').innerText = meta.modeJpForeign;
+        document.getElementById('sm-dir-foreign-jp').innerText = meta.modeForeignJp;
+    }
+
+    function setSuperMemoryPreset(front, back) {
+        document.getElementById('sm-setting-front').value = front;
+        document.getElementById('sm-setting-back').value = back;
+    }
+
+    function openSuperMemorySettings(pick) {
+        superMemoryPick = pick;
+        rebuildPartData(currentCategory, currentPart);
+        const pool = getSuperMemoryWordPool(pick);
+        if (!pool.length) {
+            alert('単語データが読み込めていません。');
+            return;
+        }
+        const masteredSkip = pool.length < (pick.type === 'level'
+            ? (stagesData[pick.id] || []).length
+            : pick.type === 'exam_range' ? LEVELS_PER_EXAM * WORDS_PER_LEVEL : masterPool.length);
+        const skipNote = masteredSkip ? ' · ✨覚えた単語は除外' : '';
+        document.getElementById('supermemory-settings-desc').innerText =
+            `${getSuperMemoryPickLabel(pick)} · ${pool.length}語${skipNote}`;
+        loadSuperMemorySettingsUI();
+        document.getElementById('supermemory-settings-modal').classList.remove('hidden');
+    }
+
+    function closeSuperMemorySettings() {
+        document.getElementById('supermemory-settings-modal').classList.add('hidden');
+        superMemoryPick = null;
+    }
+
+    function confirmSuperMemoryStart() {
+        if (!superMemoryPick) return;
+        const frontSec = Math.max(0.5, parseFloat(document.getElementById('sm-setting-front').value) || 2);
+        const backSec = Math.max(0.5, parseFloat(document.getElementById('sm-setting-back').value) || 2);
+        localStorage.setItem('hamaru_supermemory_front_sec', String(frontSec));
+        localStorage.setItem('hamaru_supermemory_back_sec', String(backSec));
+        const words = getSuperMemoryWordPool(superMemoryPick);
+        if (!words.length) {
+            alert('表示する単語がありません');
+            return;
+        }
+        superMemoryPendingConfig = {
+            pick: { ...superMemoryPick },
+            frontSec, backSec,
+            direction: superMemoryDirection,
+            category: currentCategory,
+            part: currentPart
+        };
+        closeSuperMemorySettings();
+        levelPickerMode = 'game';
+        launchSuperMemorySession(words, superMemoryPendingConfig);
+    }
+
+    function clearSuperMemoryTimer() {
+        if (superMemoryTimer) {
+            clearTimeout(superMemoryTimer);
+            superMemoryTimer = null;
+        }
+    }
+
+    function launchSuperMemorySession(words, config) {
+        clearSuperMemoryTimer();
+        currentSessionType = 'supermemory';
+        currentSessionId = config.pick.type === 'level' ? config.pick.id : config.pick.id;
+        const pool = shuffleArray(words);
+        superMemorySession = {
+            words: pool,
+            index: 0,
+            frontSec: config.frontSec,
+            backSec: config.backSec,
+            direction: config.direction,
+            phase: 'front',
+            paused: false
+        };
+        sessionWords = pool.slice();
+        sessionStats = {};
+        pool.forEach(w => {
+            sessionStats[w.de] = { word: w, wrong: 0, totalTime: 0, count: 1 };
+        });
+        updateSuperMemoryLabels();
+        showScreen('screen-supermemory');
+        startBGM();
+        loadSuperMemoryCard();
+    }
+
+    function updateSuperMemoryLabels() {
+        const meta = LANG_META[studyLang];
+        const isJpFront = superMemorySession?.direction === 'jp-foreign';
+        document.getElementById('sm-front-label').innerText = isJpFront ? '🇯🇵 日本語' : meta.label;
+        document.getElementById('sm-back-label').innerText = isJpFront ? meta.label : '🇯🇵 日本語';
+    }
+
+    function scheduleSuperMemoryStep(delayMs, fn) {
+        clearSuperMemoryTimer();
+        if (!superMemorySession || superMemorySession.paused) return;
+        superMemoryTimer = setTimeout(fn, delayMs);
+    }
+
+    function loadSuperMemoryCard() {
+        if (!superMemorySession || superMemorySession.index >= superMemorySession.words.length) {
+            endSuperMemorySession();
+            return;
+        }
+        const w = superMemorySession.words[superMemorySession.index];
+        const isJpFront = superMemorySession.direction === 'jp-foreign';
+        superMemorySession.phase = 'front';
+        document.getElementById('sm-inner').classList.remove('flipped');
+        document.getElementById('sm-front-text').innerText = isJpFront ? w.jp : w.de;
+        document.getElementById('sm-back-text').innerText = isJpFront ? w.de : w.jp;
+        document.getElementById('sm-progress').innerText =
+            `${superMemorySession.index + 1}/${superMemorySession.words.length}`;
+        document.getElementById('sm-hint').innerText =
+            superMemorySession.paused ? '一時停止中' : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 → 次へ`;
+
+        scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
+            if (!superMemorySession || superMemorySession.paused) return;
+            superMemorySession.phase = 'back';
+            document.getElementById('sm-inner').classList.add('flipped');
+            playTTS(isJpFront ? w.de : w.jp);
+            scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
+                if (!superMemorySession || superMemorySession.paused) return;
+                superMemorySession.index++;
+                loadSuperMemoryCard();
+            });
+        });
+    }
+
+    function toggleSuperMemoryPause() {
+        if (!superMemorySession) return;
+        superMemorySession.paused = !superMemorySession.paused;
+        const btn = document.getElementById('sm-pause-btn');
+        if (superMemorySession.paused) {
+            clearSuperMemoryTimer();
+            btn.innerText = '▶ 再開';
+            document.getElementById('sm-hint').innerText = '一時停止中';
+        } else {
+            btn.innerText = '⏸ 一時停止';
+            if (superMemorySession.phase === 'front') {
+                scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
+                    if (!superMemorySession || superMemorySession.paused) return;
+                    const w = superMemorySession.words[superMemorySession.index];
+                    const isJpFront = superMemorySession.direction === 'jp-foreign';
+                    superMemorySession.phase = 'back';
+                    document.getElementById('sm-inner').classList.add('flipped');
+                    playTTS(isJpFront ? w.de : w.jp);
+                    scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
+                        if (!superMemorySession || superMemorySession.paused) return;
+                        superMemorySession.index++;
+                        loadSuperMemoryCard();
+                    });
+                });
+            } else {
+                scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
+                    if (!superMemorySession || superMemorySession.paused) return;
+                    superMemorySession.index++;
+                    loadSuperMemoryCard();
+                });
+            }
+        }
+    }
+
+    function quitSuperMemory() {
+        if (confirm('メインメニューに戻りますか？')) {
+            clearSuperMemoryTimer();
+            superMemorySession = null;
+            showSelectScreen();
+        }
+    }
+
+    function endSuperMemorySession() {
+        clearSuperMemoryTimer();
+        const count = superMemorySession?.words?.length || 0;
+        superMemorySession = null;
+        if (count > 0) recordDailySessionClear(count * 30);
+        const titleEl = document.getElementById('result-title');
+        titleEl.innerText = 'SUPER MEMORY CLEAR!';
+        titleEl.className = 'result-title clear';
+        document.getElementById('final-score').innerText = count;
+        document.getElementById('max-combo').innerText = '—';
+        document.getElementById('ranking-list').innerHTML =
+            `<div style="text-align:center;color:#fbbf24;padding:8px;">⚡ スーパー暗記 ${count}語 · 1周完了</div>`;
+        renderReviewContainer();
+        showScreen('screen-result');
+        startBGM();
+    }
+
+    function repeatSuperMemorySession() {
+        if (!superMemoryPendingConfig) return;
+        currentCategory = superMemoryPendingConfig.category;
+        currentPart = superMemoryPendingConfig.part;
+        const words = getSuperMemoryWordPool(superMemoryPendingConfig.pick);
+        if (!words.length) {
+            alert('表示する単語がありません（すべて覚えた状態かもしれません）');
+            return;
+        }
+        launchSuperMemorySession(words, superMemoryPendingConfig);
+    }
+
     function showSelectScreen() {
+        clearSuperMemoryTimer();
+        superMemorySession = null;
+        levelPickerMode = 'game';
         stopGameFx();
         updateMenuUI();
         showScreen('screen-select');
@@ -2071,6 +2467,7 @@
         else if (currentSessionType === 'review') startReviewStage();
         else if (currentSessionType === 'chunk') startChunkSession();
         else if (currentSessionType === 'flashcard') startFlashcardSession();
+        else if (currentSessionType === 'supermemory') repeatSuperMemorySession();
     }
 
     function isSessionComplete() {
