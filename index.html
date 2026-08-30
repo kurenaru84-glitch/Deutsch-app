@@ -163,15 +163,64 @@
 
         /* スーパー暗記モード */
         .supermemory-panel {
-            flex: 1; display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 14px; padding: 8px 12px 16px; min-height: 0;
+            flex: 1; display: flex; flex-direction: column; align-items: stretch;
+            justify-content: center; gap: 12px; padding: 6px 10px 14px; min-height: 0; width: 100%;
         }
-        .supermemory-hint { font-size: 0.72rem; color: #fbbf24; font-weight: 800; text-align: center; }
-        .supermemory-card { cursor: default; max-width: 100%; }
-        .supermemory-card .flashcard-face { font-size: clamp(1.1rem, 4.5vw, 1.55rem); line-height: 1.45; }
+        .supermemory-hint { font-size: 0.72rem; color: #fbbf24; font-weight: 800; text-align: center; flex-shrink: 0; }
+        .supermemory-scene {
+            width: 100%; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            perspective: 1000px; padding: 0 2px;
+        }
+        .supermemory-card {
+            width: 100%; height: clamp(148px, 34vw, 210px);
+            cursor: default; -webkit-tap-highlight-color: transparent;
+        }
+        .supermemory-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .supermemory-inner.flipped { transform: rotateY(180deg); }
+        .supermemory-face {
+            position: absolute; inset: 0;
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            border-radius: 18px; padding: 16px 14px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; box-shadow: 0 10px 32px rgba(0,0,0,0.35);
+            overflow: hidden;
+        }
+        .supermemory-front {
+            background: linear-gradient(160deg, rgba(88, 28, 135, 0.9), rgba(30, 15, 60, 0.96));
+            border: 2px solid rgba(168, 85, 247, 0.55);
+            color: #f3e8ff;
+        }
+        .supermemory-back {
+            background: linear-gradient(160deg, #fffef8, #fef3c7);
+            border: 3px solid #d97706;
+            color: #0a0414;
+            transform: rotateY(180deg);
+        }
+        .supermemory-face-label {
+            font-size: 0.62rem; font-weight: 800; margin-bottom: 8px; flex-shrink: 0;
+        }
+        .supermemory-front .supermemory-face-label { color: #a78bfa; }
+        .supermemory-back .supermemory-face-label { color: #92400e; }
+        .supermemory-text {
+            width: 100%; max-width: 100%;
+            font-size: clamp(1.15rem, 5.2vw, 1.85rem);
+            font-weight: 900; line-height: 1.3;
+            word-break: break-word; overflow-wrap: anywhere;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .supermemory-back .supermemory-text {
+            font-size: clamp(1rem, 4.8vw, 1.65rem);
+        }
         .supermemory-pause-btn {
+            align-self: center;
             padding: 10px 24px; border: 2px solid rgba(251, 191, 36, 0.5); border-radius: 12px;
             background: rgba(251, 191, 36, 0.12); color: #fde68a; font-weight: 900; font-size: 0.85rem; cursor: pointer;
+            flex-shrink: 0;
         }
         .supermemory-settings-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
         .supermemory-sec-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1093,16 +1142,16 @@
         </div>
         <div class="supermemory-panel">
             <div class="supermemory-hint" id="sm-hint">自動進行中 — 表 → 裏 → 次へ</div>
-            <div class="flashcard-scene">
-                <div class="flashcard supermemory-card">
-                    <div class="flashcard-inner" id="sm-inner">
-                        <div class="flashcard-face flashcard-front">
-                            <div class="flashcard-face-label" id="sm-front-label">🇯🇵 日本語</div>
-                            <div id="sm-front-text"></div>
+            <div class="supermemory-scene">
+                <div class="supermemory-card">
+                    <div class="supermemory-inner" id="sm-inner">
+                        <div class="supermemory-face supermemory-front">
+                            <div class="supermemory-face-label" id="sm-front-label">🇯🇵 日本語</div>
+                            <div class="supermemory-text" id="sm-front-text"></div>
                         </div>
-                        <div class="flashcard-face flashcard-back">
-                            <div class="flashcard-face-label" id="sm-back-label">🇩🇪 外国語</div>
-                            <div id="sm-back-text"></div>
+                        <div class="supermemory-face supermemory-back">
+                            <div class="supermemory-face-label" id="sm-back-label">🇩🇪 外国語</div>
+                            <div class="supermemory-text" id="sm-back-text"></div>
                         </div>
                     </div>
                 </div>
@@ -2205,6 +2254,14 @@
         superMemoryTimer = setTimeout(fn, delayMs);
     }
 
+    function fitSuperMemoryText(el, text) {
+        el.innerText = text;
+        el.style.fontSize = '';
+        const len = text.length;
+        if (len > 28) el.style.fontSize = 'clamp(0.82rem, 3.6vw, 1.15rem)';
+        else if (len > 18) el.style.fontSize = 'clamp(0.95rem, 4.2vw, 1.35rem)';
+    }
+
     function loadSuperMemoryCard() {
         if (!superMemorySession || superMemorySession.index >= superMemorySession.words.length) {
             endSuperMemorySession();
@@ -2214,8 +2271,8 @@
         const isJpFront = superMemorySession.direction === 'jp-foreign';
         superMemorySession.phase = 'front';
         document.getElementById('sm-inner').classList.remove('flipped');
-        document.getElementById('sm-front-text').innerText = isJpFront ? w.jp : w.de;
-        document.getElementById('sm-back-text').innerText = isJpFront ? w.de : w.jp;
+        fitSuperMemoryText(document.getElementById('sm-front-text'), isJpFront ? w.jp : w.de);
+        fitSuperMemoryText(document.getElementById('sm-back-text'), isJpFront ? w.de : w.jp);
         document.getElementById('sm-progress').innerText =
             `${superMemorySession.index + 1}/${superMemorySession.words.length}`;
         document.getElementById('sm-hint').innerText =
