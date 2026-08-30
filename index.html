@@ -1246,6 +1246,7 @@
 </div>
 
 <script src="words-toefl-part1.js"></script>
+<script src="words-german-expressions.js"></script>
 <script src="words-english-grammar-part1.js"></script>
 <script src="words-toeic-phrases.js"></script>
 <script src="sentences-english-demo.js"></script>
@@ -1259,6 +1260,7 @@
         bgm: ['bgm.mp3', 'data/bgm.mp3', '10℃.mp3', 'data/10℃.mp3'],
         video: ['Shooting-star-effect.mp4', 'data/Shooting-star-effect.mp4'],
         toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
+        germanExpressionsCsv: ['data/german-expressions.csv', 'german-expressions.csv'],
         englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
         toeicCsv: ['data/toeic-phrases.csv', 'toeic-phrases.csv'],
         sentenceCsv: [
@@ -1268,7 +1270,7 @@
             'data/interview-sentences-demo.csv'
         ]
     };
-    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', englishCsv: 'english-grammar-part1.csv', toeicCsv: 'data/toeic-phrases.csv', sentenceCsv: 'interview-sentences-demo.csv' };
+    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', germanExpressionsCsv: 'data/german-expressions.csv', englishCsv: 'english-grammar-part1.csv', toeicCsv: 'data/toeic-phrases.csv', sentenceCsv: 'interview-sentences-demo.csv' };
     let bgmFileReady = false;
     const SPEED_PRESETS = { slow: 0.594, normal: 0.924, fast: 1.15 };
     const REVIEW_SESSION_MAX = 100;
@@ -1295,7 +1297,7 @@
     ];
 
     const LANG_META = {
-        de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語学習', label: 'ドイツ語', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
+        de: { title: 'DEUTSCH HAMARU', subtitle: 'ドイツ語 単語・定型表現', label: 'ドイツ語', modeJpForeign: '日 ➔ 独', modeForeignJp: '独 ➔ 日', tts: 'de-DE' },
         en: { title: 'ENGLISH HAMARU', subtitle: '英語 フレーズ・構文', label: '英語', modeJpForeign: '日 ➔ 英', modeForeignJp: '英 ➔ 日', tts: 'en-US' }
     };
 
@@ -1304,6 +1306,12 @@
             id: 'toefl', title: 'TOEFL単語', icon: '📘', langs: ['de'],
             parts: {
                 1: { id: 1, title: 'Part 1', desc: '単語 1〜660', defaultWords: () => window.TOEFL_PART1_WORDS || [] }
+            }
+        },
+        german_expressions: {
+            id: 'german_expressions', title: '定型表現365', icon: '💬', langs: ['de'],
+            parts: {
+                1: { id: 1, title: 'Part 1', desc: 'フレーズ 1〜518', defaultWords: () => window.GERMAN_EXPRESSION_WORDS || [] }
             }
         },
         grammar: {
@@ -1660,17 +1668,19 @@
     }
 
     async function resolveAllAssets() {
-        const [video, toeflCsv, englishCsv, toeicCsv] = await Promise.all([
+        const [video, toeflCsv, englishCsv, toeicCsv, germanExpressionsCsv] = await Promise.all([
             resolveAssetUrl(ASSET_CANDIDATES.video),
             resolveAssetUrl(ASSET_CANDIDATES.toeflCsv),
             resolveAssetUrl(ASSET_CANDIDATES.englishCsv),
-            resolveAssetUrl(ASSET_CANDIDATES.toeicCsv)
+            resolveAssetUrl(ASSET_CANDIDATES.toeicCsv),
+            resolveAssetUrl(ASSET_CANDIDATES.germanExpressionsCsv)
         ]);
         resolvedAssets.bgm = ASSET_CANDIDATES.bgm[0];
         resolvedAssets.video = video;
         resolvedAssets.toeflCsv = toeflCsv;
         resolvedAssets.englishCsv = englishCsv;
         resolvedAssets.toeicCsv = toeicCsv;
+        resolvedAssets.germanExpressionsCsv = germanExpressionsCsv;
         resolvedAssets.sentenceCsv = await resolveAssetUrl(ASSET_CANDIDATES.sentenceCsv);
         const videoEl = document.getElementById('fx-shooting-star');
         if (videoEl) videoEl.src = resolvedAssets.video;
@@ -3625,6 +3635,9 @@
     async function ensureWordDataLoaded() {
         if (!window.TOEFL_PART1_WORDS?.length) {
             window.TOEFL_PART1_WORDS = await fetchCsvWords(resolvedAssets.toeflCsv);
+        }
+        if (!window.GERMAN_EXPRESSION_WORDS?.length) {
+            window.GERMAN_EXPRESSION_WORDS = await fetchCsvWords(resolvedAssets.germanExpressionsCsv);
         }
         if (!window.ENGLISH_GRAMMAR_PART1_WORDS?.length) {
             window.ENGLISH_GRAMMAR_PART1_WORDS = await fetchCsvWords(resolvedAssets.englishCsv);
