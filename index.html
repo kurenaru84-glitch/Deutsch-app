@@ -1248,6 +1248,7 @@
 <script src="words-toefl-part1.js"></script>
 <script src="words-english-grammar-part1.js"></script>
 <script src="sentences-english-demo.js"></script>
+<script src="sentences-duo-select.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
     const WORDS_PER_LEVEL = 20;
@@ -1259,6 +1260,7 @@
         toeflCsv: ['toefl-part1.csv', 'data/toefl-part1.csv'],
         englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
         sentenceCsv: [
+            'data/duo-select-sentences-app.csv',
             'data/文章モード　面接編　英語 - interview-sentences-demo.csv',
             'interview-sentences-demo.csv',
             'data/interview-sentences-demo.csv'
@@ -3082,13 +3084,27 @@
         return words;
     }
 
-    function getSentencePool() {
-        if (customSentenceData.length > 0) return customSentenceData;
-        return (window.ENGLISH_DEMO_SENTENCES || []).map(s => ({
+    function normalizeSentenceEntry(s) {
+        return {
             jp: s.jp,
             chunks: s.chunks.slice(),
-            full: s.chunks.join(' ')
-        }));
+            full: s.full || s.chunks.join(' ')
+        };
+    }
+
+    function getBuiltInSentences() {
+        const duo = (window.DUO_SELECT_SENTENCES || []).map(normalizeSentenceEntry);
+        const demo = (window.ENGLISH_DEMO_SENTENCES || []).map(normalizeSentenceEntry);
+        if (duo.length && demo.length) {
+            const seen = new Set(duo.map(s => s.jp));
+            return duo.concat(demo.filter(s => !seen.has(s.jp)));
+        }
+        return duo.length ? duo : demo;
+    }
+
+    function getSentencePool() {
+        if (customSentenceData.length > 0) return customSentenceData;
+        return getBuiltInSentences();
     }
 
     function getSentenceStatusBadge(jp) {
@@ -3541,8 +3557,10 @@
 
     async function ensureSentenceDataLoaded() {
         const fromCsv = await fetchCsvSentences(resolvedAssets.sentenceCsv);
-        const current = window.ENGLISH_DEMO_SENTENCES?.length || 0;
-        if (fromCsv.length > current) window.ENGLISH_DEMO_SENTENCES = fromCsv;
+        const current = getBuiltInSentences().length;
+        if (fromCsv.length > current) {
+            window.ENGLISH_DEMO_SENTENCES = fromCsv;
+        }
     }
 
     function importSentenceList(input) {
