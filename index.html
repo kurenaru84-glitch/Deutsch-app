@@ -2293,7 +2293,44 @@
                 </div><div style="font-size:1.4rem;color:#fbbf24;">▶</div>`;
             list.appendChild(card);
         });
+        if (studyLang === 'en') {
+            const sentenceDecks = Object.values(SENTENCE_DECK_META).filter(meta => getSentenceDeckPool(meta.id).length > 0);
+            if (sentenceDecks.length) {
+                const heading = document.createElement('div');
+                heading.style.cssText = 'grid-column:1/-1;font-size:0.72rem;color:#a78bfa;font-weight:800;margin:4px 0 0;text-align:center;';
+                heading.innerText = '📖 文章モード';
+                list.appendChild(heading);
+                sentenceDecks.forEach(meta => {
+                    const count = getSentenceDeckPool(meta.id).length;
+                    const card = document.createElement('div');
+                    card.className = 'category-card';
+                    card.onclick = () => {
+                        closePartModal(false);
+                        openSuperMemorySentenceDeckPicker(meta.id);
+                    };
+                    card.innerHTML = `
+                        <div>
+                            <div class="category-title">${meta.icon} ${meta.title}</div>
+                            <div class="category-desc">${count}文 / 20文ずつ · 全件</div>
+                        </div><div style="font-size:1.4rem;color:#fbbf24;">▶</div>`;
+                    list.appendChild(card);
+                });
+            }
+        }
         document.getElementById('part-modal').classList.remove('hidden');
+    }
+
+    function openSuperMemorySentenceDeckPicker(deckId) {
+        const pool = getSentenceDeckPool(deckId);
+        if (!pool.length) {
+            alert('このフォルダに文章がありません');
+            levelPickerMode = 'game';
+            return;
+        }
+        levelPickerMode = 'sentence_supermemory';
+        sentenceSuperMemoryDeckId = deckId;
+        buildSentenceLevelGridUI(deckId);
+        document.getElementById('level-modal').classList.remove('hidden');
     }
 
     function getReviewSuperMemoryPool() {
@@ -2617,11 +2654,13 @@
                 ? '一時停止中'
                 : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 · ←スワイプでスキップ`;
 
+        if (!isJpFront) playSuperMemoryForeignTTS(w);
+
         scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
             if (!superMemorySession || superMemorySession.paused) return;
             superMemorySession.phase = 'back';
             document.getElementById('sm-inner').classList.add('flipped');
-            playTTS(isJpFront ? w.de : w.jp);
+            if (isJpFront) playSuperMemoryForeignTTS(w);
             scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                 if (!superMemorySession || superMemorySession.paused) return;
                 advanceSuperMemoryCard();
@@ -2640,13 +2679,14 @@
         } else {
             btn.innerText = '⏸ 一時停止';
             if (superMemorySession.phase === 'front') {
+                const w = superMemorySession.words[superMemorySession.index];
+                const isJpFront = superMemorySession.direction === 'jp-foreign';
+                if (!isJpFront) playSuperMemoryForeignTTS(w);
                 scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
                     if (!superMemorySession || superMemorySession.paused) return;
-                    const w = superMemorySession.words[superMemorySession.index];
-                    const isJpFront = superMemorySession.direction === 'jp-foreign';
                     superMemorySession.phase = 'back';
                     document.getElementById('sm-inner').classList.add('flipped');
-                    playTTS(isJpFront ? w.de : w.jp);
+                    if (isJpFront) playSuperMemoryForeignTTS(w);
                     scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                         if (!superMemorySession || superMemorySession.paused) return;
                         advanceSuperMemoryCard();
@@ -3182,6 +3222,10 @@
         }
     }
 
+    function playSuperMemoryForeignTTS(word) {
+        if (word?.de) playTTS(word.de);
+    }
+
     function endGame(isClear) {
         clearInterval(gameInterval);
         stopGameFx();
@@ -3382,15 +3426,7 @@
     }
 
     function openSentenceSuperMemoryPicker() {
-        const pool = getSentencePool();
-        if (!pool.length) {
-            alert('このフォルダに文章がありません');
-            return;
-        }
-        levelPickerMode = 'sentence_supermemory';
-        sentenceSuperMemoryDeckId = currentSentenceDeck;
-        buildSentenceLevelGridUI(currentSentenceDeck);
-        document.getElementById('level-modal').classList.remove('hidden');
+        openSuperMemorySentenceDeckPicker(currentSentenceDeck);
     }
 
     function getSentenceStatusBadge(jp) {
