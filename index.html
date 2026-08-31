@@ -425,6 +425,19 @@
         }
         .sentence-mode-btn.chunk { background: linear-gradient(135deg, #a855f7, #6366f1); }
         .sentence-mode-btn.flash { background: linear-gradient(135deg, #0891b2, #0284c7); }
+        .sentence-mode-btn.super { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #422006; }
+        .sentence-deck-tabs {
+            display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0;
+        }
+        .sentence-deck-tab {
+            flex: 1; min-width: 88px; padding: 8px 6px; border-radius: 10px; cursor: pointer;
+            border: 1px solid rgba(168, 85, 247, 0.35); background: rgba(88, 28, 135, 0.2);
+            color: #e9d5ff; font-size: 0.68rem; font-weight: 800; text-align: center;
+        }
+        .sentence-deck-tab.active {
+            border-color: #c084fc; background: rgba(168, 85, 247, 0.35); color: #fff;
+            box-shadow: 0 0 10px rgba(192, 132, 252, 0.35);
+        }
 
         /* 文章リスト（タップで裏返し） */
         .sentence-list-pager {
@@ -964,9 +977,11 @@
             <button class="close-btn" onclick="closeSentenceModal()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="sentence-modal-desc">学習方法を選んでください</div>
+        <div class="sentence-deck-tabs" id="sentence-deck-tabs"></div>
         <div class="review-modal-actions sentence-mode-btns">
             <button class="sentence-mode-btn chunk" onclick="startChunkSession()">🫧 チャンク並べ替え（バブル）</button>
             <button class="sentence-mode-btn flash" onclick="startFlashcardSession()">🃏 暗記カード（タップで裏返し）</button>
+            <button class="sentence-mode-btn super" onclick="openSentenceSuperMemoryPicker()">⚡ スーパー暗記</button>
         </div>
         <div class="sentence-list-pager" id="sentence-list-pager">
             <button id="sentence-page-prev" onclick="changeSentenceListPage(-1)">◀</button>
@@ -1336,6 +1351,11 @@
         }
     };
 
+    const SENTENCE_DECK_META = {
+        interview: { id: 'interview', title: '面接編', icon: '💼', source: () => window.ENGLISH_DEMO_SENTENCES || [] },
+        duo: { id: 'duo', title: 'DUO Select', icon: '📗', source: () => window.DUO_SELECT_SENTENCES || [] }
+    };
+
     let studyLang = localStorage.getItem('hamaru_study_lang') || 'de';
     let reviewPool = [];
     let masteredPool = [];
@@ -1349,6 +1369,8 @@
     let chunkTimerInterval = null;
     let flashcardSession = null;
     let sentenceListPage = 0;
+    let currentSentenceDeck = localStorage.getItem('hamaru_sentence_deck') || 'interview';
+    let sentenceSuperMemoryDeckId = 'interview';
 
     let levelPickerMode = 'game';
     let superMemoryPick = null;
@@ -1971,9 +1993,13 @@
         if (studyLang === 'en') {
             sentenceBtn?.classList.remove('hidden');
             if (sentenceImportRow) sentenceImportRow.style.display = '';
-            const pool = getSentencePool();
+            const pool = getSentenceDeckPool('interview').length + getSentenceDeckPool('duo').length;
+            const customN = customSentenceData.length;
+            const totalLabel = customN > 0
+                ? `面接${getSentenceDeckPool('interview').length} + DUO${getSentenceDeckPool('duo').length} + 他${customN}`
+                : `面接${getSentenceDeckPool('interview').length} + DUO${getSentenceDeckPool('duo').length}`;
             document.getElementById('sentence-btn-text').innerText =
-                pool.length > 0 ? `📖 文章モード (${pool.length}文)` : '📖 文章モード';
+                pool + customN > 0 ? `📖 文章モード (${totalLabel})` : '📖 文章モード';
         } else {
             sentenceBtn?.classList.add('hidden');
             if (sentenceImportRow) sentenceImportRow.style.display = 'none';
@@ -1985,6 +2011,12 @@
     function openCategoryModal(categoryId) {
         currentCategory = categoryId;
         const cat = ALL_CATEGORIES[categoryId];
+        const parts = Object.values(cat.parts);
+        if (parts.length === 1) {
+            closePartModal(false);
+            openLevelModal(categoryId, parts[0].id);
+            return;
+        }
         document.getElementById('part-modal-title').innerText = `${cat.icon} ${cat.title}`;
         document.getElementById('part-modal-breadcrumb').innerText =
             levelPickerMode === 'supermemory' ? '⚡ スーパー暗記 — Part を選択' : 'Part を選択';
@@ -2019,10 +2051,16 @@
             document.getElementById('level-modal-title').innerText =
                 levelPickerMode === 'supermemory' ? `${part.title} — ⚡スーパー暗記` : `${part.title} — Level選択`;
             document.getElementById('level-modal-breadcrumb').innerText =
-                levelPickerMode === 'supermemory'
+                levelPickerMode === 'sentence_supermemory'
+                    ? `${getSentenceDeckMeta(sentenceSuperMemoryDeckId).title} › 範囲を選択（20文ずつ）`
+                    : levelPickerMode === 'supermemory'
                     ? `${cat.title} › ${part.title} › 範囲を選択（20語 / 100語）`
                     : `${cat.title} › ${part.title} › ${words.length}語`;
-            buildLevelGridUI(levelCount, words.length);
+            if (levelPickerMode === 'sentence_supermemory') {
+                buildSentenceLevelGridUI(sentenceSuperMemoryDeckId);
+            } else {
+                buildLevelGridUI(levelCount, words.length);
+            }
             document.getElementById('level-modal').classList.remove('hidden');
         });
     }
@@ -2173,7 +2211,31 @@
             levelPickerMode = 'game';
             return;
         }
-        openCategoryModal(cats[0].id);
+        openSuperMemoryCategoryModal(cats);
+    }
+
+    function openSuperMemoryCategoryModal(cats) {
+        document.getElementById('part-modal-title').innerText = '⚡ スーパー暗記 — カテゴリ選択';
+        document.getElementById('part-modal-breadcrumb').innerText = '学習リストを選んでください';
+        const list = document.getElementById('part-list');
+        list.innerHTML = '';
+        cats.forEach(cat => {
+            const part = cat.parts[1] || Object.values(cat.parts)[0];
+            const info = rebuildPartData(cat.id, part.id);
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.onclick = () => {
+                closePartModal(false);
+                openCategoryModal(cat.id);
+            };
+            card.innerHTML = `
+                <div>
+                    <div class="category-title">${cat.icon} ${cat.title}</div>
+                    <div class="category-desc">${info.words.length}語 / Level 1〜${info.levelCount}</div>
+                </div><div style="font-size:1.4rem;color:#fbbf24;">▶</div>`;
+            list.appendChild(card);
+        });
+        document.getElementById('part-modal').classList.remove('hidden');
     }
 
     function getReviewSuperMemoryPool() {
@@ -2182,8 +2244,44 @@
         return shuffleArray(pool).slice(0, REVIEW_SESSION_MAX);
     }
 
+    function isSentenceSuperMemoryPick(pick) {
+        const type = pick?.type || '';
+        return type === 'sentence_page' || type === 'sentence_all';
+    }
+
+    function getSentenceDeckMeta(deckId) {
+        if (deckId === 'custom') return { id: 'custom', title: 'インポート', icon: '📂' };
+        return SENTENCE_DECK_META[deckId] || { id: deckId, title: deckId, icon: '📖' };
+    }
+
+    function getSentenceDeckPool(deckId) {
+        if (deckId === 'custom') {
+            return (customSentenceData || []).map(normalizeSentenceEntry);
+        }
+        const meta = SENTENCE_DECK_META[deckId];
+        if (!meta) return [];
+        return (meta.source() || []).map(normalizeSentenceEntry);
+    }
+
+    function sentenceToSuperMemoryItem(s) {
+        return { de: s.full || s.chunks.join(' '), jp: s.jp };
+    }
+
+    function getSentenceSuperMemoryPool(pick) {
+        let pool = getSentenceDeckPool(pick.deckId).filter(
+            s => !sentenceMasteredPool.some(m => m.jp === s.jp)
+        );
+        if (!pool.length) pool = getSentenceDeckPool(pick.deckId);
+        if (pick.type === 'sentence_page') {
+            const start = pick.page * SENTENCES_PER_PAGE;
+            pool = pool.slice(start, start + SENTENCES_PER_PAGE);
+        }
+        return pool.map(sentenceToSuperMemoryItem);
+    }
+
     function getSuperMemoryWordPool(pick) {
         if (pick.type === 'review') return getReviewSuperMemoryPool();
+        if (isSentenceSuperMemoryPick(pick)) return getSentenceSuperMemoryPool(pick);
         rebuildPartData(currentCategory, currentPart);
         if (pick.type === 'level') {
             return filterNonMastered(stagesData[pick.id] || []);
@@ -2204,6 +2302,16 @@
 
     function getSuperMemoryPickLabel(pick) {
         if (pick.type === 'review') return '🔥 弱点・復習リスト';
+        if (pick.type === 'sentence_page') {
+            const meta = getSentenceDeckMeta(pick.deckId);
+            const start = pick.page * SENTENCES_PER_PAGE + 1;
+            const end = start + SENTENCES_PER_PAGE - 1;
+            return `${meta.icon} ${meta.title} · ${start}〜${end}文`;
+        }
+        if (pick.type === 'sentence_all') {
+            const meta = getSentenceDeckMeta(pick.deckId);
+            return `${meta.icon} ${meta.title} · 全${getSentenceDeckPool(pick.deckId).length}文`;
+        }
         if (pick.type === 'level') return `Level ${pick.id}（${(stagesData[pick.id] || []).length}語）`;
         if (pick.type === 'exam_range') {
             const startLvl = (pick.id - 1) * LEVELS_PER_EXAM + 1;
@@ -2237,21 +2345,30 @@
 
     function openSuperMemorySettings(pick) {
         superMemoryPick = pick;
-        if (pick.type !== 'review') rebuildPartData(currentCategory, currentPart);
+        if (!isSentenceSuperMemoryPick(pick) && pick.type !== 'review') {
+            rebuildPartData(currentCategory, currentPart);
+        }
         const pool = getSuperMemoryWordPool(pick);
         if (!pool.length) {
-            alert(pick.type === 'review' ? '復習リストが空です。' : '単語データが読み込めていません。');
+            alert(pick.type === 'review' ? '復習リストが空です。'
+                : isSentenceSuperMemoryPick(pick) ? '表示する文章がありません。' : '単語データが読み込めていません。');
             return;
         }
         let skipNote = '';
         if (pick.type !== 'review') {
-            const masteredSkip = pool.length < (pick.type === 'level'
-                ? (stagesData[pick.id] || []).length
-                : pick.type === 'exam_range' ? LEVELS_PER_EXAM * WORDS_PER_LEVEL : masterPool.length);
-            if (masteredSkip) skipNote = ' · ✨覚えた単語は除外';
+            if (isSentenceSuperMemoryPick(pick)) {
+                const fullLen = getSentenceDeckPool(pick.deckId).length;
+                if (pool.length < fullLen) skipNote = ' · ✨覚えた文章は除外';
+            } else {
+                const masteredSkip = pool.length < (pick.type === 'level'
+                    ? (stagesData[pick.id] || []).length
+                    : pick.type === 'exam_range' ? LEVELS_PER_EXAM * WORDS_PER_LEVEL : masterPool.length);
+                if (masteredSkip) skipNote = ' · ✨覚えた単語は除外';
+            }
         }
+        const unit = isSentenceSuperMemoryPick(pick) ? '文' : '語';
         document.getElementById('supermemory-settings-desc').innerText =
-            `${getSuperMemoryPickLabel(pick)} · ${pool.length}語${skipNote}`;
+            `${getSuperMemoryPickLabel(pick)} · ${pool.length}${unit}${skipNote}`;
         loadSuperMemorySettingsUI();
         document.getElementById('supermemory-settings-modal').classList.remove('hidden');
     }
@@ -2269,7 +2386,8 @@
         localStorage.setItem('hamaru_supermemory_back_sec', String(backSec));
         const words = getSuperMemoryWordPool(superMemoryPick);
         if (!words.length) {
-            alert('表示する単語がありません');
+            alert(isSentenceSuperMemoryPick(superMemoryPick) ? '表示する文章がありません'
+                : '表示する単語がありません');
             return;
         }
         superMemoryPendingConfig = {
@@ -2281,6 +2399,9 @@
         };
         closeSuperMemorySettings();
         levelPickerMode = 'game';
+        if (isSentenceSuperMemoryPick(superMemoryPick)) {
+            closeSentenceModal();
+        }
         launchSuperMemorySession(words, superMemoryPendingConfig);
     }
 
@@ -2349,11 +2470,15 @@
     function superMemoryMarkLearned() {
         if (!superMemorySession) return;
         const w = superMemorySession.words[superMemorySession.index];
-        if (w && !isMastered(w.de)) {
-            masteredPool.push({ de: w.de, jp: w.jp });
-            reviewPool = reviewPool.filter(x => x.de !== w.de);
-            saveData();
-            updateMenuUI();
+        if (w) {
+            if (isSentenceSuperMemoryPick(superMemoryPendingConfig?.pick)) {
+                saveSentenceMemory({ jp: w.jp, chunks: [w.de], full: w.de }, true);
+            } else if (!isMastered(w.de)) {
+                masteredPool.push({ de: w.de, jp: w.jp });
+                reviewPool = reviewPool.filter(x => x.de !== w.de);
+                saveData();
+                updateMenuUI();
+            }
         }
         const hint = document.getElementById('sm-hint');
         if (hint) hint.innerText = '✨ 覚えた — 次へ';
@@ -2497,7 +2622,7 @@
         document.getElementById('final-score').innerText = count;
         document.getElementById('max-combo').innerText = '—';
         document.getElementById('ranking-list').innerHTML =
-            `<div style="text-align:center;color:#fbbf24;padding:8px;">⚡ スーパー暗記 ${count}語 · 1周完了</div>`;
+            `<div style="text-align:center;color:#fbbf24;padding:8px;">⚡ スーパー暗記 ${count}${isSentenceSuperMemoryPick(superMemoryPendingConfig?.pick) ? '文' : '語'} · 1周完了</div>`;
         renderReviewContainer();
         showScreen('screen-result');
         startBGM();
@@ -2505,14 +2630,15 @@
 
     function repeatSuperMemorySession() {
         if (!superMemoryPendingConfig) return;
-        if (superMemoryPendingConfig.pick.type !== 'review') {
+        const pick = superMemoryPendingConfig.pick;
+        if (pick.type !== 'review' && !isSentenceSuperMemoryPick(pick)) {
             currentCategory = superMemoryPendingConfig.category;
             currentPart = superMemoryPendingConfig.part;
         }
-        const words = getSuperMemoryWordPool(superMemoryPendingConfig.pick);
+        const words = getSuperMemoryWordPool(pick);
         if (!words.length) {
-            alert(superMemoryPendingConfig.pick.type === 'review'
-                ? '復習リストが空です。'
+            alert(pick.type === 'review' ? '復習リストが空です。'
+                : isSentenceSuperMemoryPick(pick) ? '表示する文章がありません。'
                 : '表示する単語がありません（すべて覚えた状態かもしれません）');
             return;
         }
@@ -3123,18 +3249,86 @@
     }
 
     function getBuiltInSentences() {
-        const duo = (window.DUO_SELECT_SENTENCES || []).map(normalizeSentenceEntry);
-        const demo = (window.ENGLISH_DEMO_SENTENCES || []).map(normalizeSentenceEntry);
-        if (duo.length && demo.length) {
-            const seen = new Set(duo.map(s => s.jp));
-            return duo.concat(demo.filter(s => !seen.has(s.jp)));
-        }
-        return duo.length ? duo : demo;
+        return getSentenceDeckPool('interview').concat(getSentenceDeckPool('duo'));
     }
 
     function getSentencePool() {
-        if (customSentenceData.length > 0) return customSentenceData;
-        return getBuiltInSentences();
+        if (currentSentenceDeck === 'custom' && customSentenceData.length > 0) {
+            return customSentenceData.map(normalizeSentenceEntry);
+        }
+        return getSentenceDeckPool(currentSentenceDeck);
+    }
+
+    function renderSentenceDeckTabs() {
+        const container = document.getElementById('sentence-deck-tabs');
+        if (!container) return;
+        container.innerHTML = '';
+        const decks = ['interview', 'duo'];
+        if (customSentenceData.length > 0) decks.push('custom');
+        decks.forEach(deckId => {
+            const meta = getSentenceDeckMeta(deckId);
+            const count = getSentenceDeckPool(deckId).length;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `sentence-deck-tab ${currentSentenceDeck === deckId ? 'active' : ''}`;
+            btn.onclick = () => selectSentenceDeck(deckId);
+            btn.innerText = `${meta.icon} ${meta.title} (${count})`;
+            container.appendChild(btn);
+        });
+    }
+
+    function selectSentenceDeck(deckId) {
+        currentSentenceDeck = deckId;
+        sentenceListPage = 0;
+        localStorage.setItem('hamaru_sentence_deck', deckId);
+        renderSentenceDeckTabs();
+        renderSentenceList();
+    }
+
+    function buildSentenceLevelGridUI(deckId) {
+        const pool = getSentenceDeckPool(deckId);
+        const meta = getSentenceDeckMeta(deckId);
+        const levelCount = Math.ceil(pool.length / SENTENCES_PER_PAGE) || 1;
+        document.getElementById('level-modal-title').innerText = `${meta.icon} ${meta.title} — ⚡スーパー暗記`;
+        document.getElementById('level-modal-breadcrumb').innerText = `${pool.length}文 · 20文ずつ / 全件`;
+        const grid = document.getElementById('level-grid');
+        grid.innerHTML = '';
+        if (!pool.length) {
+            grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:#fca5a5;padding:20px;">文章がありません</div>';
+            return;
+        }
+        for (let i = 0; i < levelCount; i++) {
+            const start = i * SENTENCES_PER_PAGE;
+            const count = Math.min(SENTENCES_PER_PAGE, pool.length - start);
+            const card = document.createElement('div');
+            card.className = 'level-card';
+            card.onclick = () => {
+                closeLevelModal();
+                openSuperMemorySettings({ type: 'sentence_page', deckId, page: i });
+            };
+            card.innerHTML = `<div class="lvl-num">${start + 1}〜${start + count}文</div><div class="lvl-count">${count} 文</div>`;
+            grid.appendChild(card);
+        }
+        const allCard = document.createElement('div');
+        allCard.className = 'level-card exam-all-card';
+        allCard.onclick = () => {
+            closeLevelModal();
+            openSuperMemorySettings({ type: 'sentence_all', deckId });
+        };
+        allCard.innerHTML = `<div class="lvl-num">📚 全件暗記</div><div class="lvl-count">全${pool.length}文 / 1周</div>`;
+        grid.appendChild(allCard);
+    }
+
+    function openSentenceSuperMemoryPicker() {
+        const pool = getSentencePool();
+        if (!pool.length) {
+            alert('このフォルダに文章がありません');
+            return;
+        }
+        levelPickerMode = 'sentence_supermemory';
+        sentenceSuperMemoryDeckId = currentSentenceDeck;
+        buildSentenceLevelGridUI(currentSentenceDeck);
+        document.getElementById('level-modal').classList.remove('hidden');
     }
 
     function getSentenceStatusBadge(jp) {
@@ -3158,7 +3352,7 @@
         const end = Math.min(start + pageItems.length, pool.length);
 
         document.getElementById('sentence-modal-desc').innerText =
-            `${pool.length}文登録中。リストをタップで英文表示 → 覚えた/覚えてない`;
+            `${pool.length}文 · ${getSentenceDeckMeta(currentSentenceDeck).title} — タップで英文 / 覚えた・覚えてない`;
         document.getElementById('sentence-list-page-label').innerText =
             pool.length > 0 ? `${start + 1}〜${end} / 全${pool.length}文 (${sentenceListPage + 1}/${totalPages})` : '0文';
         document.getElementById('sentence-page-prev').disabled = sentenceListPage <= 0;
@@ -3200,6 +3394,10 @@
 
     function openSentenceModal() {
         sentenceListPage = 0;
+        if (currentSentenceDeck === 'custom' && !customSentenceData.length) {
+            currentSentenceDeck = 'interview';
+        }
+        renderSentenceDeckTabs();
         renderSentenceList();
         document.getElementById('sentence-modal').classList.remove('hidden');
     }
@@ -3611,6 +3809,8 @@
                     return;
                 }
                 customSentenceData = sentences;
+                currentSentenceDeck = 'custom';
+                localStorage.setItem('hamaru_sentence_deck', 'custom');
                 saveData();
                 updateMenuUI();
                 statusEl.innerText = `✓ ${sentences.length}文を読み込みました`;
