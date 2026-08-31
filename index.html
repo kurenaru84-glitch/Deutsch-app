@@ -540,9 +540,14 @@
             backdrop-filter: blur(10px);
             display: flex; flex-direction: column; padding: 16px; z-index: 50;
         }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .modal-title { font-size: 1.15rem; font-weight: 900; color: #e9d5ff; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .modal-title { font-size: 1.15rem; font-weight: 900; color: #e9d5ff; flex: 1; min-width: 0; }
         .modal-breadcrumb { font-size: 0.7rem; color: #a78bfa; margin-bottom: 8px; }
+        .back-btn {
+            background: rgba(30, 15, 60, 0.85); border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #fde68a; padding: 6px 10px; border-radius: 8px; font-weight: 800; cursor: pointer;
+            flex-shrink: 0; font-size: 0.78rem;
+        }
         .close-btn {
             background: rgba(107, 33, 168, 0.6); border: none; color: #fff;
             padding: 6px 12px; border-radius: 8px; font-weight: 800; cursor: pointer;
@@ -976,8 +981,9 @@
     <!-- Part選択モーダル -->
     <div id="part-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title" id="part-modal-title">TOEFL Part選択</div>
-            <button class="close-btn" onclick="closePartModal(true)">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="part-modal-breadcrumb"></div>
         <div class="category-list" id="part-list"></div>
@@ -986,8 +992,9 @@
     <!-- Level選択モーダル -->
     <div id="level-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title" id="level-modal-title">Level選択</div>
-            <button class="close-btn" onclick="closeLevelModal(true)">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="level-modal-breadcrumb"></div>
         <div class="level-grid" id="level-grid"></div>
@@ -996,8 +1003,9 @@
     <!-- 文章モード -->
     <div id="sentence-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title">📖 文章モード</div>
-            <button class="close-btn" onclick="closeSentenceModal()">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="sentence-modal-desc">学習方法を選んでください</div>
         <div class="sentence-deck-tabs" id="sentence-deck-tabs"></div>
@@ -1017,8 +1025,9 @@
     <!-- スーパー暗記 設定 -->
     <div id="supermemory-settings-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title">⚡ スーパー暗記 設定</div>
-            <button class="close-btn" onclick="closeSuperMemorySettings()">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="supermemory-settings-desc">対象リストを確認して開始</div>
         <div class="supermemory-settings-body">
@@ -1049,8 +1058,9 @@
     <!-- 今日の成績 -->
     <div id="today-stats-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title">📊 今日の成績</div>
-            <button class="close-btn" onclick="closeTodayStatsModal()">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="stats-date" id="stats-date-label"></div>
         <div class="stats-grid">
@@ -1092,8 +1102,9 @@
     <!-- 復習リスト -->
     <div id="review-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title">🔥 弱点・復習リスト</div>
-            <button class="close-btn" onclick="closeReviewModal()">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb" id="review-modal-desc">リストからいつでも解除できます。テストは最大100語まで。</div>
         <div class="review-modal-actions">
@@ -1106,8 +1117,9 @@
     <!-- 覚えた単語リスト -->
     <div id="mastered-modal" class="modal-overlay hidden">
         <div class="modal-header">
+            <button type="button" class="back-btn" onclick="navigateBack()">← 戻る</button>
             <div class="modal-title">✨ 完全に覚えた単語</div>
-            <button class="close-btn" onclick="closeMasteredModal()">✕</button>
+            <button class="close-btn" onclick="navigateCloseAll()">✕</button>
         </div>
         <div class="modal-breadcrumb">試験モード以外では出題されません</div>
         <div class="category-list word-list-modal" id="mastered-list"></div>
@@ -1278,6 +1290,7 @@
         <div class="review-container" id="review-container"></div>
         <div class="btn-group">
             <button class="action-btn secondary" onclick="repeatCurrentSession()">↺ もう一度</button>
+            <button class="action-btn secondary" onclick="restoreModalReturn()">← 戻る</button>
             <button class="action-btn" onclick="showSelectScreen()">メニューへ</button>
         </div>
     </div>
@@ -1401,6 +1414,14 @@
     let superMemoryTimer = null;
     let superMemoryDirection = localStorage.getItem('hamaru_supermemory_direction') || 'jp-foreign';
     let superMemoryPendingConfig = null;
+
+    let modalNavStack = [];
+    let sessionReturnContext = null;
+
+    const ALL_MODAL_IDS = [
+        'part-modal', 'level-modal', 'mastered-modal', 'today-stats-modal',
+        'review-modal', 'sentence-modal', 'supermemory-settings-modal'
+    ];
 
     let currentCategory = 'toefl';
     let currentPart = 1;
@@ -1598,22 +1619,103 @@
         document.getElementById('stats-quote-author').innerText = quote.author || '';
         document.getElementById('stats-streak-main').innerText = getStreakDisplayText();
         document.getElementById('stats-streak-sub').innerText = `最高記録: ${studyStreak.best}日`;
-        document.getElementById('today-stats-modal').classList.remove('hidden');
+        navigateToModal('today-stats-modal', true);
     }
 
     function closeTodayStatsModal() {
-        document.getElementById('today-stats-modal').classList.add('hidden');
+        navigateCloseAll();
+    }
+
+    function navigateToModal(modalId, reset = false) {
+        if (reset) {
+            modalNavStack.forEach(id => document.getElementById(id)?.classList.add('hidden'));
+            modalNavStack = [];
+        } else if (modalNavStack.length && modalNavStack[modalNavStack.length - 1] !== modalId) {
+            document.getElementById(modalNavStack[modalNavStack.length - 1])?.classList.add('hidden');
+        }
+        if (modalNavStack[modalNavStack.length - 1] !== modalId) {
+            modalNavStack.push(modalId);
+        }
+        document.getElementById(modalId)?.classList.remove('hidden');
+    }
+
+    function navigateBack() {
+        if (!modalNavStack.length) return;
+        const closing = modalNavStack[modalNavStack.length - 1];
+        document.getElementById(modalNavStack.pop())?.classList.add('hidden');
+        if (closing === 'supermemory-settings-modal') superMemoryPick = null;
+        if (modalNavStack.length) {
+            document.getElementById(modalNavStack[modalNavStack.length - 1])?.classList.remove('hidden');
+            return;
+        }
+        levelPickerMode = 'game';
+        superMemoryPick = null;
+    }
+
+    function navigateCloseAll() {
+        ALL_MODAL_IDS.forEach(id => document.getElementById(id)?.classList.add('hidden'));
+        modalNavStack = [];
+        levelPickerMode = 'game';
+        superMemoryPick = null;
+    }
+
+    function captureModalReturn() {
+        sessionReturnContext = {
+            stack: [...modalNavStack],
+            pickerMode: levelPickerMode,
+            category: currentCategory,
+            part: currentPart,
+            sentenceDeckId: sentenceSuperMemoryDeckId
+        };
+    }
+
+    function refreshTopModalContent() {
+        const top = modalNavStack[modalNavStack.length - 1];
+        if (top === 'level-modal') {
+            ensureWordDataLoaded().then(() => {
+                if (levelPickerMode === 'sentence_supermemory') {
+                    buildSentenceLevelGridUI(sentenceSuperMemoryDeckId);
+                } else {
+                    openLevelModalContent(currentCategory, currentPart);
+                }
+            });
+        } else if (top === 'part-modal' && levelPickerMode === 'supermemory') {
+            openSuperMemoryCategoryModal(getCategoriesForLang(studyLang));
+        } else if (top === 'review-modal') {
+            fillReviewModalContent();
+        } else if (top === 'sentence-modal') {
+            renderSentenceDeckTabs();
+            renderSentenceList();
+        } else if (top === 'supermemory-settings-modal' && superMemoryPick) {
+            fillSuperMemorySettingsContent(superMemoryPick);
+        }
+    }
+
+    function restoreModalReturn() {
+        const ctx = sessionReturnContext;
+        if (!ctx?.stack?.length) {
+            showSelectScreen();
+            return;
+        }
+        clearSuperMemoryTimer();
+        superMemorySession = null;
+        clearInterval(gameInterval);
+        isPaused = false;
+        document.getElementById('pause-overlay')?.classList.add('hidden');
+        stopGameFx();
+        showScreen('screen-select');
+        levelPickerMode = ctx.pickerMode || 'game';
+        currentCategory = ctx.category ?? currentCategory;
+        currentPart = ctx.part ?? currentPart;
+        if (ctx.sentenceDeckId) sentenceSuperMemoryDeckId = ctx.sentenceDeckId;
+        modalNavStack = [];
+        ctx.stack.forEach((modalId, index) => navigateToModal(modalId, index === 0));
+        refreshTopModalContent();
+        startBGM();
     }
 
     function closeAllModals() {
-        document.getElementById('part-modal')?.classList.add('hidden');
-        document.getElementById('level-modal')?.classList.add('hidden');
-        document.getElementById('mastered-modal')?.classList.add('hidden');
-        document.getElementById('today-stats-modal')?.classList.add('hidden');
-        document.getElementById('review-modal')?.classList.add('hidden');
-        document.getElementById('sentence-modal')?.classList.add('hidden');
-        document.getElementById('supermemory-settings-modal')?.classList.add('hidden');
-        levelPickerMode = 'game';
+        navigateCloseAll();
     }
 
     function toggleSettingsPanel() {
@@ -2071,10 +2173,12 @@
         const cat = ALL_CATEGORIES[categoryId];
         const parts = Object.values(cat.parts);
         if (parts.length === 1) {
-            closePartModal(false);
-            openLevelModal(categoryId, parts[0].id);
+            const fromSuperMemory = levelPickerMode === 'supermemory' && modalNavStack.includes('part-modal');
+            navigateToModal('level-modal', !fromSuperMemory);
+            openLevelModalContent(categoryId, parts[0].id);
             return;
         }
+        navigateToModal('part-modal', levelPickerMode !== 'supermemory');
         document.getElementById('part-modal-title').innerText = `${cat.icon} ${cat.title}`;
         document.getElementById('part-modal-breadcrumb').innerText =
             levelPickerMode === 'supermemory' ? '⚡ スーパー暗記 — Part を選択' : 'Part を選択';
@@ -2084,7 +2188,10 @@
             const info = rebuildPartData(categoryId, part.id);
             const card = document.createElement('div');
             card.className = 'category-card';
-            card.onclick = () => { closePartModal(false); openLevelModal(categoryId, part.id); };
+            card.onclick = () => {
+                navigateToModal('level-modal');
+                openLevelModalContent(categoryId, part.id);
+            };
             card.innerHTML = `
                 <div>
                     <div class="category-title">${part.title}</div>
@@ -2092,14 +2199,15 @@
                 </div><div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
             list.appendChild(card);
         });
-        document.getElementById('part-modal').classList.remove('hidden');
-    }
-    function closePartModal(cancelPicker = true) {
-        document.getElementById('part-modal').classList.add('hidden');
-        if (cancelPicker) levelPickerMode = 'game';
     }
 
     function openLevelModal(categoryId, partId) {
+        const keepStack = levelPickerMode === 'supermemory' && modalNavStack.includes('part-modal');
+        navigateToModal('level-modal', !keepStack && levelPickerMode !== 'supermemory');
+        openLevelModalContent(categoryId, partId);
+    }
+
+    function openLevelModalContent(categoryId, partId) {
         currentCategory = categoryId;
         currentPart = partId;
         ensureWordDataLoaded().then(() => {
@@ -2119,12 +2227,17 @@
             } else {
                 buildLevelGridUI(levelCount, words.length);
             }
-            document.getElementById('level-modal').classList.remove('hidden');
         });
     }
+
+    function closePartModal(cancelPicker = true) {
+        if (cancelPicker) navigateCloseAll();
+        else document.getElementById('part-modal')?.classList.add('hidden');
+    }
+
     function closeLevelModal(cancelPicker = false) {
-        document.getElementById('level-modal').classList.add('hidden');
-        if (cancelPicker) levelPickerMode = 'game';
+        if (cancelPicker) navigateCloseAll();
+        else document.getElementById('level-modal')?.classList.add('hidden');
     }
 
     function buildLevelGridUI(levelCount, totalWords) {
@@ -2164,7 +2277,7 @@
         grid.appendChild(allExam);
     }
 
-    function openReviewModal() {
+    function fillReviewModalContent() {
         const list = document.getElementById('review-list');
         list.innerHTML = '';
         const activePool = reviewPool.filter(w => !isMastered(w.de));
@@ -2186,9 +2299,13 @@
                 list.appendChild(div);
             });
         }
-        document.getElementById('review-modal').classList.remove('hidden');
     }
-    function closeReviewModal() { document.getElementById('review-modal').classList.add('hidden'); }
+
+    function openReviewModal() {
+        fillReviewModalContent();
+        navigateToModal('review-modal', true);
+    }
+    function closeReviewModal() { navigateCloseAll(); }
 
     function removeFromReview(de) {
         reviewPool = reviewPool.filter(w => w.de !== de);
@@ -2217,9 +2334,9 @@
                 list.appendChild(div);
             });
         }
-        document.getElementById('mastered-modal').classList.remove('hidden');
+        navigateToModal('mastered-modal', true);
     }
-    function closeMasteredModal() { document.getElementById('mastered-modal').classList.add('hidden'); }
+    function closeMasteredModal() { navigateCloseAll(); }
 
     function removeFromMastered(de) {
         masteredPool = masteredPool.filter(w => (typeof w === 'string' ? w : w.de) !== de);
@@ -2235,28 +2352,31 @@
     }
 
     function onLevelCardClick(levelNum) {
-        closeLevelModal();
         if (levelPickerMode === 'supermemory') {
             openSuperMemorySettings({ type: 'level', id: levelNum });
         } else {
+            captureModalReturn();
+            navigateCloseAll();
             startLevelStage(levelNum);
         }
     }
 
     function onExamRangeCardClick(rangeIdx) {
-        closeLevelModal();
         if (levelPickerMode === 'supermemory') {
             openSuperMemorySettings({ type: 'exam_range', id: rangeIdx });
         } else {
+            captureModalReturn();
+            navigateCloseAll();
             startExamRangeStage(rangeIdx);
         }
     }
 
     function onExamAllCardClick() {
-        closeLevelModal();
         if (levelPickerMode === 'supermemory') {
             openSuperMemorySettings({ type: 'exam_all', id: 'all' });
         } else {
+            captureModalReturn();
+            navigateCloseAll();
             startExamAllStage();
         }
     }
@@ -2269,6 +2389,7 @@
             levelPickerMode = 'game';
             return;
         }
+        navigateToModal('part-modal', true);
         openSuperMemoryCategoryModal(cats);
     }
 
@@ -2282,10 +2403,7 @@
             const info = rebuildPartData(cat.id, part.id);
             const card = document.createElement('div');
             card.className = 'category-card';
-            card.onclick = () => {
-                closePartModal(false);
-                openCategoryModal(cat.id);
-            };
+            card.onclick = () => openCategoryModal(cat.id);
             card.innerHTML = `
                 <div>
                     <div class="category-title">${cat.icon} ${cat.title}</div>
@@ -2304,10 +2422,7 @@
                     const count = getSentenceDeckPool(meta.id).length;
                     const card = document.createElement('div');
                     card.className = 'category-card';
-                    card.onclick = () => {
-                        closePartModal(false);
-                        openSuperMemorySentenceDeckPicker(meta.id);
-                    };
+                    card.onclick = () => openSuperMemorySentenceDeckPicker(meta.id);
                     card.innerHTML = `
                         <div>
                             <div class="category-title">${meta.icon} ${meta.title}</div>
@@ -2317,20 +2432,18 @@
                 });
             }
         }
-        document.getElementById('part-modal').classList.remove('hidden');
     }
 
     function openSuperMemorySentenceDeckPicker(deckId) {
         const pool = getSentenceDeckPool(deckId);
         if (!pool.length) {
             alert('このフォルダに文章がありません');
-            levelPickerMode = 'game';
             return;
         }
         levelPickerMode = 'sentence_supermemory';
         sentenceSuperMemoryDeckId = deckId;
+        navigateToModal('level-modal');
         buildSentenceLevelGridUI(deckId);
-        document.getElementById('level-modal').classList.remove('hidden');
     }
 
     function getReviewSuperMemoryPool() {
@@ -2438,7 +2551,7 @@
         document.getElementById('sm-setting-back').value = back;
     }
 
-    function openSuperMemorySettings(pick) {
+    function fillSuperMemorySettingsContent(pick) {
         superMemoryPick = pick;
         if (!isSentenceSuperMemoryPick(pick) && pick.type !== 'review') {
             rebuildPartData(currentCategory, currentPart);
@@ -2447,7 +2560,8 @@
         if (!pool.length) {
             alert(pick.type === 'review' ? '復習リストが空です。'
                 : isSentenceSuperMemoryPick(pick) ? '表示する文章がありません。' : '単語データが読み込めていません。');
-            return;
+            superMemoryPick = null;
+            return false;
         }
         let skipNote = '';
         if (pick.type !== 'review') {
@@ -2465,11 +2579,16 @@
         document.getElementById('supermemory-settings-desc').innerText =
             `${getSuperMemoryPickLabel(pick)} · ${pool.length}${unit}${skipNote}`;
         loadSuperMemorySettingsUI();
-        document.getElementById('supermemory-settings-modal').classList.remove('hidden');
+        return true;
+    }
+
+    function openSuperMemorySettings(pick) {
+        if (!fillSuperMemorySettingsContent(pick)) return;
+        navigateToModal('supermemory-settings-modal');
     }
 
     function closeSuperMemorySettings() {
-        document.getElementById('supermemory-settings-modal').classList.add('hidden');
+        navigateBack();
         superMemoryPick = null;
     }
 
@@ -2492,11 +2611,14 @@
             category: currentCategory,
             part: currentPart
         };
-        closeSuperMemorySettings();
-        levelPickerMode = 'game';
-        if (isSentenceSuperMemoryPick(superMemoryPick)) {
-            closeSentenceModal();
-        }
+        sessionReturnContext = {
+            stack: modalNavStack.slice(0, -1),
+            pickerMode: levelPickerMode,
+            category: currentCategory,
+            part: currentPart,
+            sentenceDeckId: sentenceSuperMemoryDeckId
+        };
+        navigateCloseAll();
         launchSuperMemorySession(words, superMemoryPendingConfig);
     }
 
@@ -2702,10 +2824,10 @@
     }
 
     function quitSuperMemory() {
-        if (confirm('メインメニューに戻りますか？')) {
+        if (confirm('前の画面に戻りますか？')) {
             clearSuperMemoryTimer();
             superMemorySession = null;
-            showSelectScreen();
+            restoreModalReturn();
         }
     }
 
@@ -2746,7 +2868,8 @@
     function showSelectScreen() {
         clearSuperMemoryTimer();
         superMemorySession = null;
-        levelPickerMode = 'game';
+        sessionReturnContext = null;
+        navigateCloseAll();
         stopGameFx();
         updateMenuUI();
         showScreen('screen-select');
@@ -2834,11 +2957,11 @@
     }
 
     function quitGame() {
-        if (confirm('メインメニューに戻りますか？')) {
+        if (confirm('ステージ選択に戻りますか？')) {
             clearInterval(gameInterval);
             isPaused = false;
             document.getElementById('pause-overlay').classList.add('hidden');
-            showSelectScreen();
+            restoreModalReturn();
         }
     }
 
@@ -2893,13 +3016,13 @@
             alert('復習リストが空です。');
             return;
         }
-        closeReviewModal();
         openSuperMemorySettings({ type: 'review', id: 'review' });
     }
 
     function startReviewStage() {
         if (reviewPool.length === 0) return;
-        closeReviewModal();
+        captureModalReturn();
+        navigateCloseAll();
         currentSessionType = 'review';
         currentSessionId = 'review';
         isExamSession = false;
@@ -3409,7 +3532,6 @@
             const card = document.createElement('div');
             card.className = 'level-card';
             card.onclick = () => {
-                closeLevelModal();
                 openSuperMemorySettings({ type: 'sentence_page', deckId, page: i });
             };
             card.innerHTML = `<div class="lvl-num">${start + 1}〜${start + count}文</div><div class="lvl-count">${count} 文</div>`;
@@ -3418,7 +3540,6 @@
         const allCard = document.createElement('div');
         allCard.className = 'level-card exam-all-card';
         allCard.onclick = () => {
-            closeLevelModal();
             openSuperMemorySettings({ type: 'sentence_all', deckId });
         };
         allCard.innerHTML = `<div class="lvl-num">📚 全件暗記</div><div class="lvl-count">全${pool.length}文 / 1周</div>`;
@@ -3497,8 +3618,10 @@
         }
         renderSentenceDeckTabs();
         renderSentenceList();
-        document.getElementById('sentence-modal').classList.remove('hidden');
+        navigateToModal('sentence-modal', true);
     }
+
+    function closeSentenceModal() { navigateCloseAll(); }
 
     function changeSentenceListPage(delta) {
         sentenceListPage += delta;
@@ -3533,8 +3656,6 @@
         if (inner) inner.classList.remove('flipped');
         renderSentenceList();
     }
-
-    function closeSentenceModal() { document.getElementById('sentence-modal').classList.add('hidden'); }
 
     function stopChunkTimer() {
         if (chunkTimerInterval) { clearInterval(chunkTimerInterval); chunkTimerInterval = null; }
@@ -3576,7 +3697,8 @@
     function startChunkSession() {
         const pool = shuffleArray(getSentencePool()).slice(0, CHUNK_SESSION_MAX);
         if (pool.length === 0) return;
-        closeSentenceModal();
+        captureModalReturn();
+        navigateCloseAll();
         currentSessionType = 'chunk';
         currentSessionId = 'chunk';
         isExamSession = false;
@@ -3736,11 +3858,11 @@
     }
 
     function quitChunkGame() {
-        if (confirm('メインメニューに戻りますか？')) {
+        if (confirm('前の画面に戻りますか？')) {
             stopChunkTimer();
             chunkSession = null;
             isPaused = false;
-            showSelectScreen();
+            restoreModalReturn();
         }
     }
 
@@ -3765,7 +3887,8 @@
     function startFlashcardSession() {
         const pool = shuffleArray(getSentencePool()).slice(0, CHUNK_SESSION_MAX);
         if (pool.length === 0) return;
-        closeSentenceModal();
+        captureModalReturn();
+        navigateCloseAll();
         currentSessionType = 'flashcard';
         currentSessionId = 'flashcard';
         isPaused = false;
@@ -3814,9 +3937,9 @@
     }
 
     function quitFlashcardGame() {
-        if (confirm('メインメニューに戻りますか？')) {
+        if (confirm('前の画面に戻りますか？')) {
             flashcardSession = null;
-            showSelectScreen();
+            restoreModalReturn();
         }
     }
 
