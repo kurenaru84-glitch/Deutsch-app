@@ -64,6 +64,8 @@
             .mode-toggle-container { margin-bottom: 6px !important; }
             .category-list { gap: 8px; }
             .stage-btn { padding: 12px; }
+            .controls-wrapper { height: clamp(204px, 29dvh, 240px); min-height: 204px; gap: 5px; }
+            .side-column { gap: 3px; }
         }
         @media (min-width: 500px) {
             body { align-items: center; min-height: 100vh; height: 100vh; }
@@ -681,19 +683,22 @@
         }
 
         .falling-word {
-            position: absolute; width: 46%; padding: 12px 8px;
+            position: absolute; width: 46%; padding: 10px 6px;
             background: #ffffff;
             border: 3px solid #78350f;
             border-radius: 12px; text-align: center;
-            font-size: 1.15rem; font-weight: 900; color: #000000;
+            font-size: clamp(0.78rem, 3.2vw, 1.15rem); font-weight: 900; color: #000000;
             box-shadow: 0 4px 0 #78350f, 0 8px 24px rgba(0,0,0,0.55);
             will-change: transform, top;
-            line-height: 1.35;
+            line-height: 1.25;
             letter-spacing: 0.02em;
             z-index: 12;
             isolation: isolate;
             mix-blend-mode: normal;
             -webkit-font-smoothing: antialiased;
+            word-break: break-word;
+            overflow: hidden;
+            max-height: 42%;
         }
         .falling-word.spawn-pop {
             animation: spawnPop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
@@ -725,16 +730,34 @@
         .lane-0 { left: 2%; }
         .lane-1 { right: 2%; }
 
-        .controls-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 210px; }
-        .side-column { display: grid; grid-template-rows: repeat(4, 1fr); gap: 5px; }
+        .controls-wrapper {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+            height: clamp(196px, 27dvh, 248px);
+            min-height: 196px; flex-shrink: 0;
+        }
+        .side-column { display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 4px; min-height: 0; }
         .opt-btn {
             background: linear-gradient(145deg, rgba(40, 20, 70, 0.95), rgba(25, 12, 50, 0.95));
             border: 2px solid rgba(168, 85, 247, 0.4);
-            color: #f3e8ff; font-size: 0.82rem; font-weight: 800;
+            color: #f3e8ff; font-weight: 800;
             border-radius: 10px; cursor: pointer;
             transition: transform 0.05s, background 0.05s;
             display: flex; align-items: center; justify-content: center;
-            padding: 2px 4px; text-align: center; position: relative; overflow: hidden;
+            padding: 2px 5px; text-align: center; position: relative; overflow: hidden;
+            min-height: 0;
+            font-size: clamp(0.58rem, 2.5vw, 0.82rem);
+            line-height: 1.12;
+            word-break: break-word;
+            hyphens: auto;
+        }
+        .opt-btn.long-text {
+            font-size: clamp(0.5rem, 2.1vw, 0.68rem);
+            line-height: 1.08;
+            padding: 1px 4px;
+        }
+        .opt-btn.very-long-text {
+            font-size: clamp(0.46rem, 1.9vw, 0.62rem);
+            line-height: 1.05;
         }
         .opt-btn:active {
             transform: scale(0.93);
@@ -1616,6 +1639,41 @@
     function getPromptText(w) { return isQuestionJapanese() ? w.jp : w.de; }
     function getCorrectAnswer(w) { return isQuestionJapanese() ? w.de : w.jp; }
     function getChoiceText(w) { return isQuestionJapanese() ? w.de : w.jp; }
+
+    function truncateGameText(text, maxLen) {
+        const s = String(text ?? '').trim().replace(/\s+/g, ' ');
+        if (!maxLen || s.length <= maxLen) return s;
+        const cut = s.slice(0, maxLen - 1);
+        const sp = cut.lastIndexOf(' ');
+        if (sp > maxLen * 0.45) return cut.slice(0, sp) + '…';
+        return cut + '…';
+    }
+
+    function getChoiceTruncateLimit(text) {
+        const len = String(text ?? '').length;
+        if (len > 72) return 22;
+        if (len > 52) return 28;
+        if (len > 38) return 34;
+        if (len > 28) return 40;
+        return len;
+    }
+
+    function formatPromptText(text) {
+        return truncateGameText(text, 52);
+    }
+
+    function formatChoiceLabel(text) {
+        const full = String(text ?? '');
+        const limit = getChoiceTruncateLimit(full);
+        return truncateGameText(full, limit);
+    }
+
+    function getChoiceBtnClass(text) {
+        const len = String(text ?? '').length;
+        if (len > 52) return 'opt-btn very-long-text';
+        if (len > 38) return 'opt-btn long-text';
+        return 'opt-btn';
+    }
     function getTtsLang() { return LANG_META[studyLang].tts; }
 
     function rebuildPartData(categoryId, partId) {
@@ -2916,7 +2974,9 @@
 
         const el = document.createElement('div');
         el.className = `falling-word lane-${lane} spawn-pop`;
-        el.innerText = getPromptText(wordData);
+        const promptFull = getPromptText(wordData);
+        el.innerText = formatPromptText(promptFull);
+        if (promptFull.length > 52) el.title = promptFull;
         document.getElementById('game-words-layer').appendChild(el);
         recordDailyWordSeen(wordData.de);
 
@@ -2946,9 +3006,11 @@
         container.innerHTML = '';
         choices.forEach(text => {
             const btn = document.createElement('button');
-            btn.className = 'opt-btn';
-            btn.innerText = text;
-            btn.onclick = (e) => { createRippleEffect(e, btn); checkAnswer(text, lane, e); };
+            btn.className = getChoiceBtnClass(text);
+            btn.dataset.answer = text;
+            btn.innerText = formatChoiceLabel(text);
+            if (text.length > getChoiceTruncateLimit(text)) btn.title = text;
+            btn.onclick = (e) => { createRippleEffect(e, btn); checkAnswer(btn.dataset.answer, lane, e); };
             container.appendChild(btn);
         });
     }
