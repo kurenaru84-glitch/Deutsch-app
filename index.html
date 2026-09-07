@@ -838,6 +838,11 @@
         .review-item.correct-item { background: rgba(16, 185, 129, 0.12); border-left: 3px solid #10b981; }
         .review-item.wrong-item { background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; }
         .review-item .word-text { flex: 1; min-width: 0; }
+        .tts-tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .tts-tap:active { opacity: 0.72; }
+        .word-list-item.tts-tap:active { background: rgba(168, 85, 247, 0.18); }
+        .ranking-item.tts-tap { cursor: pointer; }
+        .ranking-item.tts-tap:active { opacity: 0.72; }
         .status-btn-group { display: flex; gap: 4px; flex-shrink: 0; }
         .status-select-btn {
             border: none; color: #fff; padding: 4px 6px; border-radius: 6px;
@@ -948,11 +953,18 @@
                 <input type="range" id="se-volume" min="0" max="1" step="0.05" value="0.5" oninput="updateVolume()">
             </div>
             <div class="setting-row">
+                <span>🗣 日本語音声:</span>
+                <div class="speed-options">
+                    <button id="jp-tts-off" class="speed-btn" onclick="setJpTtsEnabled(false, this)">OFF</button>
+                    <button id="jp-tts-on" class="speed-btn active" onclick="setJpTtsEnabled(true, this)">ON</button>
+                </div>
+            </div>
+            <div class="setting-row">
                 <span>⚡ 速度:</span>
                 <div class="speed-options">
-                    <button class="speed-btn" onclick="setSpeed('slow', this)">遅め</button>
-                    <button class="speed-btn active" onclick="setSpeed('normal', this)">標準</button>
-                    <button class="speed-btn" onclick="setSpeed('fast', this)">速い</button>
+                    <button class="speed-btn speed-preset-btn" onclick="setSpeed('slow', this)">遅め</button>
+                    <button class="speed-btn speed-preset-btn active" onclick="setSpeed('normal', this)">標準</button>
+                    <button class="speed-btn speed-preset-btn" onclick="setSpeed('fast', this)">速い</button>
                 </div>
             </div>
         </div>
@@ -1460,6 +1472,7 @@
     });
     customAudio.addEventListener('playing', () => { bgmStarted = true; stopSynthBGM(); });
     let bgmVol = 0.3, seVol = 0.5;
+    let jpTtsEnabled = localStorage.getItem('hamaru_jp_tts_enabled') !== 'false';
     let bgmStarted = false;
     let useUploadedBgm = false;
     let bgmSuspendedByHide = false;
@@ -2084,13 +2097,24 @@
         speedPreset = preset;
         dropSpeed = SPEED_PRESETS[preset] || SPEED_PRESETS.normal;
         localStorage.setItem('hamaru_speed_preset', preset);
-        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.speed-preset-btn').forEach(b => b.classList.remove('active'));
         if (btnEl) btnEl.classList.add('active');
+    }
+
+    function setJpTtsEnabled(enabled, btnEl) {
+        jpTtsEnabled = enabled;
+        localStorage.setItem('hamaru_jp_tts_enabled', enabled ? 'true' : 'false');
+        applyJpTtsUI();
+    }
+
+    function applyJpTtsUI() {
+        document.getElementById('jp-tts-on').className = `speed-btn ${jpTtsEnabled ? 'active' : ''}`;
+        document.getElementById('jp-tts-off').className = `speed-btn ${jpTtsEnabled ? '' : 'active'}`;
     }
 
     function applySpeedUI() {
         const order = ['slow', 'normal', 'fast'];
-        document.querySelectorAll('.speed-btn').forEach((b, i) => {
+        document.querySelectorAll('.speed-preset-btn').forEach((b, i) => {
             b.classList.toggle('active', order[i] === speedPreset);
         });
     }
@@ -2293,9 +2317,13 @@
                 const de = item.de;
                 const jp = item.jp || findWordJp(de);
                 const div = document.createElement('div');
-                div.className = 'word-list-item review-item-row';
-                div.innerHTML = `<span><strong>${de}</strong> (${jp})</span>
+                div.className = 'word-list-item review-item-row tts-tap';
+                div.innerHTML = `<span><strong>${escapeHtml(de)}</strong> (${escapeHtml(jp)})</span>
                     <button class="remove-btn" onclick="removeFromReview('${de.replace(/'/g, "\\'")}')">解除</button>`;
+                div.addEventListener('click', (e) => {
+                    if (e.target.closest('.remove-btn')) return;
+                    playListItemTTS({ de, jp });
+                });
                 list.appendChild(div);
             });
         }
@@ -2328,9 +2356,13 @@
                 const de = typeof item === 'string' ? item : item.de;
                 const jp = typeof item === 'object' ? item.jp : findWordJp(de);
                 const div = document.createElement('div');
-                div.className = 'word-list-item';
-                div.innerHTML = `<span><strong>${de}</strong> (${jp})</span>
+                div.className = 'word-list-item tts-tap';
+                div.innerHTML = `<span><strong>${escapeHtml(de)}</strong> (${escapeHtml(jp)})</span>
                     <button class="remove-btn" onclick="removeFromMastered('${de.replace(/'/g, "\\'")}')">解除</button>`;
+                div.addEventListener('click', (e) => {
+                    if (e.target.closest('.remove-btn')) return;
+                    playListItemTTS({ de, jp });
+                });
                 list.appendChild(div);
             });
         }
@@ -2747,6 +2779,15 @@
             tracking = false;
             resetSuperMemoryCardSwipe();
         }, { passive: true });
+
+        card.addEventListener('click', (e) => {
+            if (!superMemorySession) return;
+            if (e.target.closest('.supermemory-actions, .supermemory-pause-btn, button')) return;
+            const w = superMemorySession.words[superMemorySession.index];
+            const isJpFront = superMemorySession.direction === 'jp-foreign';
+            const showingForeign = superMemorySession.phase === 'back' ? isJpFront : !isJpFront;
+            playSuperMemoryTTS(w, showingForeign);
+        });
     }
 
     function fitSuperMemoryText(el, text) {
@@ -2774,15 +2815,17 @@
         document.getElementById('sm-hint').innerText =
             superMemorySession.paused
                 ? '一時停止中'
-                : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 · ←スワイプでスキップ`;
+                : `表 ${superMemorySession.frontSec}秒 → 裏 ${superMemorySession.backSec}秒 · ←スワイプでスキップ · タップで再生`;
 
-        if (!isJpFront) playSuperMemoryForeignTTS(w);
+        if (!isJpFront) playSuperMemoryTTS(w, true);
+        else playSuperMemoryTTS(w, false);
 
         scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
             if (!superMemorySession || superMemorySession.paused) return;
             superMemorySession.phase = 'back';
             document.getElementById('sm-inner').classList.add('flipped');
-            if (isJpFront) playSuperMemoryForeignTTS(w);
+            if (isJpFront) playSuperMemoryTTS(w, true);
+            else playSuperMemoryTTS(w, false);
             scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                 if (!superMemorySession || superMemorySession.paused) return;
                 advanceSuperMemoryCard();
@@ -2803,12 +2846,14 @@
             if (superMemorySession.phase === 'front') {
                 const w = superMemorySession.words[superMemorySession.index];
                 const isJpFront = superMemorySession.direction === 'jp-foreign';
-                if (!isJpFront) playSuperMemoryForeignTTS(w);
+                if (!isJpFront) playSuperMemoryTTS(w, true);
+                else playSuperMemoryTTS(w, false);
                 scheduleSuperMemoryStep(superMemorySession.frontSec * 1000, () => {
                     if (!superMemorySession || superMemorySession.paused) return;
                     superMemorySession.phase = 'back';
                     document.getElementById('sm-inner').classList.add('flipped');
-                    if (isJpFront) playSuperMemoryForeignTTS(w);
+                    if (isJpFront) playSuperMemoryTTS(w, true);
+                    else playSuperMemoryTTS(w, false);
                     scheduleSuperMemoryStep(superMemorySession.backSec * 1000, () => {
                         if (!superMemorySession || superMemorySession.paused) return;
                         advanceSuperMemoryCard();
@@ -3335,18 +3380,41 @@
         document.getElementById('progress-count').innerText = `CLEAR: ${solvedCount}/${requiredTotalClears}`;
     }
 
-    function playTTS(text) {
-        if ('speechSynthesis' in window && seVol > 0) {
-            window.speechSynthesis.cancel();
-            const uttr = new SpeechSynthesisUtterance(text);
-            uttr.lang = getTtsLang();
-            uttr.volume = seVol;
-            window.speechSynthesis.speak(uttr);
-        }
+    function playTTS(text, lang) {
+        if (!('speechSynthesis' in window) || seVol <= 0) return;
+        const spoken = String(text ?? '').trim();
+        if (!spoken) return;
+        window.speechSynthesis.cancel();
+        const uttr = new SpeechSynthesisUtterance(spoken);
+        uttr.lang = lang || getTtsLang();
+        uttr.volume = seVol;
+        window.speechSynthesis.speak(uttr);
+        return uttr;
     }
 
-    function playSuperMemoryForeignTTS(word) {
-        if (word?.de) playTTS(word.de);
+    function playForeignTTS(text) {
+        playTTS(text, getTtsLang());
+    }
+
+    function playJapaneseTTS(text) {
+        if (!jpTtsEnabled) return;
+        playTTS(text, 'ja-JP');
+    }
+
+    function playListItemTTS(word) {
+        if (!word) return;
+        window.speechSynthesis?.cancel();
+        if (word.de) playForeignTTS(word.de);
+        else if (word.jp) playJapaneseTTS(word.jp);
+    }
+
+    function playSuperMemoryTTS(word, showingForeign) {
+        if (!word) return;
+        if (showingForeign) {
+            if (word.de) playForeignTTS(word.de);
+        } else {
+            playJapaneseTTS(word.jp);
+        }
     }
 
     function endGame(isClear) {
@@ -3391,9 +3459,13 @@
             return;
         }
         ranked.forEach((item, idx) => {
+            const stat = Object.values(sessionStats).find(s => s.word.de === item.de);
             const div = document.createElement('div');
-            div.className = 'ranking-item';
-            div.innerHTML = `<span>${idx + 1}位 <strong>${item.de}</strong></span><span>ミス ${item.wrong} (${item.avgTime}s)</span>`;
+            div.className = 'ranking-item tts-tap';
+            div.innerHTML = `<span>${idx + 1}位 <strong>${escapeHtml(item.de)}</strong></span><span>ミス ${item.wrong} (${item.avgTime}s)</span>`;
+            if (stat?.word) {
+                div.addEventListener('click', () => playListItemTTS(stat.word));
+            }
             listEl.appendChild(div);
         });
     }
@@ -3413,14 +3485,24 @@
             const safeDe = word.de.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const safeJp = (word.jp || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-            div.innerHTML = `
-                <span class="word-text"><strong>${word.de}</strong> (${word.jp})</span>
-                <div class="status-btn-group">
-                    <button class="status-select-btn review ${inReview ? 'active' : 'inactive'}"
-                        onclick="toggleReviewStatus('${safeDe}', '${safeJp}', this)">🔥 復習</button>
-                    <button class="status-select-btn mastered ${inMastered ? 'active' : 'inactive'}"
-                        onclick="toggleMasteredStatus('${safeDe}', '${safeJp}', this)">✨ 覚えた</button>
-                </div>`;
+            const textSpan = document.createElement('span');
+            textSpan.className = 'word-text tts-tap';
+            textSpan.innerHTML = `<strong>${escapeHtml(word.de)}</strong> (${escapeHtml(word.jp || '')})`;
+            textSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                playListItemTTS(word);
+            });
+
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'status-btn-group';
+            btnGroup.innerHTML = `
+                <button class="status-select-btn review ${inReview ? 'active' : 'inactive'}"
+                    onclick="toggleReviewStatus('${safeDe}', '${safeJp}', this)">🔥 復習</button>
+                <button class="status-select-btn mastered ${inMastered ? 'active' : 'inactive'}"
+                    onclick="toggleMasteredStatus('${safeDe}', '${safeJp}', this)">✨ 覚えた</button>`;
+
+            div.appendChild(textSpan);
+            div.appendChild(btnGroup);
             container.appendChild(div);
         });
     }
@@ -3637,12 +3719,13 @@
             if (el !== inner) el.classList.remove('flipped');
         });
         inner.classList.toggle('flipped');
+        const s = getSentencePool()[globalIdx];
+        if (!s) return;
+        window.speechSynthesis?.cancel();
         if (willFlip) {
-            const s = getSentencePool()[globalIdx];
-            if (s) {
-                window.speechSynthesis?.cancel();
-                playTTS(s.full || s.chunks.join(' '));
-            }
+            playForeignTTS(s.full || s.chunks.join(' '));
+        } else {
+            playJapaneseTTS(s.jp);
         }
     }
 
@@ -4134,6 +4217,7 @@
             if (studyLang === 'en') currentCategory = 'toeic_phrases';
             updateLangUI();
             applySpeedUI();
+            applyJpTtsUI();
             updateMenuUI();
             resolveAllAssets().then(async () => {
                 await ensureWordDataLoaded();
