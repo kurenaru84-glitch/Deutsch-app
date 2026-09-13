@@ -1312,6 +1312,7 @@
 <script src="words-german-expressions.js"></script>
 <script src="words-german-expression-examples.js"></script>
 <script src="words-english-grammar-part1.js"></script>
+<script src="words-horimiya-grammar.js"></script>
 <script src="words-toeic-phrases.js"></script>
 <script src="sentences-english-demo.js"></script>
 <script src="sentences-duo-select.js"></script>
@@ -1327,6 +1328,7 @@
         germanExpressionsCsv: ['data/german-expressions.csv', 'german-expressions.csv'],
         germanExpressionExamplesCsv: ['data/german-expression-examples.csv', 'german-expression-examples.csv'],
         englishCsv: ['english-grammar-part1.csv', 'data/english-grammar-part1.csv'],
+        horimiyaCsv: ['data/horimiya-grammar.csv', 'horimiya-grammar.csv'],
         toeicCsv: ['data/toeic-phrases.csv', 'toeic-phrases.csv'],
         sentenceCsv: [
             'data/duo-select-sentences-app.csv',
@@ -1335,7 +1337,7 @@
             'data/interview-sentences-demo.csv'
         ]
     };
-    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', germanExpressionsCsv: 'data/german-expressions.csv', germanExpressionExamplesCsv: 'data/german-expression-examples.csv', englishCsv: 'english-grammar-part1.csv', toeicCsv: 'data/toeic-phrases.csv', sentenceCsv: 'interview-sentences-demo.csv' };
+    let resolvedAssets = { bgm: 'bgm.mp3', video: 'Shooting-star-effect.mp4', toeflCsv: 'toefl-part1.csv', germanExpressionsCsv: 'data/german-expressions.csv', germanExpressionExamplesCsv: 'data/german-expression-examples.csv', englishCsv: 'english-grammar-part1.csv', horimiyaCsv: 'data/horimiya-grammar.csv', toeicCsv: 'data/toeic-phrases.csv', sentenceCsv: 'interview-sentences-demo.csv' };
     let bgmFileReady = false;
     const SPEED_PRESETS = { slow: 0.594, normal: 0.924, fast: 1.15 };
     const REVIEW_SESSION_MAX = 100;
@@ -1388,7 +1390,8 @@
         grammar: {
             id: 'grammar', title: '構文', icon: '📝', langs: ['en'],
             parts: {
-                1: { id: 1, title: 'Part 1', desc: '構文 1〜450', defaultWords: () => window.ENGLISH_GRAMMAR_PART1_WORDS || [] }
+                1: { id: 1, title: 'Part 1', desc: '構文 1〜450', defaultWords: () => window.ENGLISH_GRAMMAR_PART1_WORDS || [] },
+                2: { id: 2, title: '📺 ホリミヤ', desc: 'アニメから拾った構文', defaultWords: () => window.HORIMIYA_GRAMMAR_WORDS || [] }
             }
         },
         toeic_phrases: {
@@ -1871,10 +1874,11 @@
     }
 
     async function resolveAllAssets() {
-        const [video, toeflCsv, englishCsv, toeicCsv, germanExpressionsCsv, germanExpressionExamplesCsv] = await Promise.all([
+        const [video, toeflCsv, englishCsv, horimiyaCsv, toeicCsv, germanExpressionsCsv, germanExpressionExamplesCsv] = await Promise.all([
             resolveAssetUrl(ASSET_CANDIDATES.video),
             resolveAssetUrl(ASSET_CANDIDATES.toeflCsv),
             resolveAssetUrl(ASSET_CANDIDATES.englishCsv),
+            resolveAssetUrl(ASSET_CANDIDATES.horimiyaCsv),
             resolveAssetUrl(ASSET_CANDIDATES.toeicCsv),
             resolveAssetUrl(ASSET_CANDIDATES.germanExpressionsCsv),
             resolveAssetUrl(ASSET_CANDIDATES.germanExpressionExamplesCsv)
@@ -1883,6 +1887,7 @@
         resolvedAssets.video = video;
         resolvedAssets.toeflCsv = toeflCsv;
         resolvedAssets.englishCsv = englishCsv;
+        resolvedAssets.horimiyaCsv = horimiyaCsv;
         resolvedAssets.toeicCsv = toeicCsv;
         resolvedAssets.germanExpressionsCsv = germanExpressionsCsv;
         resolvedAssets.germanExpressionExamplesCsv = germanExpressionExamplesCsv;
@@ -2139,6 +2144,19 @@
         document.getElementById(id).classList.remove('hidden');
     }
 
+    function getCategoryCountLabel(cat) {
+        const parts = Object.values(cat.parts);
+        const counts = parts.map(p => getPartWords(cat.id, p.id).length);
+        const total = counts.reduce((sum, n) => sum + n, 0);
+        if (total === 0) return '単語ファイル未読込';
+        if (parts.length === 1) {
+            const levels = Math.ceil(total / WORDS_PER_LEVEL) || 1;
+            return `${parts[0].title}: ${total}語 / Level 1〜${levels}`;
+        }
+        const breakdown = parts.map((p, i) => `${p.title} ${counts[i]}`).join(' · ');
+        return `${parts.length}フォルダ / 全${total}語（${breakdown}）`;
+    }
+
     function updateMenuUI() {
         const reviewBtn = document.getElementById('review-stage-btn');
         if (reviewPool.length > 0) {
@@ -2159,11 +2177,10 @@
             const card = document.createElement('div');
             card.className = 'category-card';
             card.onclick = () => openCategoryModal(cat.id);
-            const countLabel = info.words.length > 0 ? `${info.words.length}語 / Level 1〜${info.levelCount}` : '単語ファイル未読込';
             card.innerHTML = `
                 <div>
                     <div class="category-title">${cat.icon} ${cat.title}</div>
-                    <div class="category-desc">${part.title}: ${countLabel}</div>
+                    <div class="category-desc">${getCategoryCountLabel(cat)}</div>
                 </div>
                 <div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
             container.appendChild(card);
@@ -2209,7 +2226,8 @@
         const list = document.getElementById('part-list');
         list.innerHTML = '';
         Object.values(cat.parts).forEach(part => {
-            const info = rebuildPartData(categoryId, part.id);
+            const words = getPartWords(categoryId, part.id);
+            const levelCount = Math.ceil(words.length / WORDS_PER_LEVEL) || 1;
             const card = document.createElement('div');
             card.className = 'category-card';
             card.onclick = () => {
@@ -2219,7 +2237,7 @@
             card.innerHTML = `
                 <div>
                     <div class="category-title">${part.title}</div>
-                    <div class="category-desc">${part.desc} — ${info.words.length}語 / ${info.levelCount} Levels</div>
+                    <div class="category-desc">${part.desc} — ${words.length}語 / ${levelCount} Levels</div>
                 </div><div style="font-size:1.4rem;color:#c084fc;">▶</div>`;
             list.appendChild(card);
         });
@@ -2431,15 +2449,13 @@
         const list = document.getElementById('part-list');
         list.innerHTML = '';
         cats.forEach(cat => {
-            const part = cat.parts[1] || Object.values(cat.parts)[0];
-            const info = rebuildPartData(cat.id, part.id);
             const card = document.createElement('div');
             card.className = 'category-card';
             card.onclick = () => openCategoryModal(cat.id);
             card.innerHTML = `
                 <div>
                     <div class="category-title">${cat.icon} ${cat.title}</div>
-                    <div class="category-desc">${info.words.length}語 / Level 1〜${info.levelCount}</div>
+                    <div class="category-desc">${getCategoryCountLabel(cat)}</div>
                 </div><div style="font-size:1.4rem;color:#fbbf24;">▶</div>`;
             list.appendChild(card);
         });
@@ -4158,6 +4174,9 @@
         }
         if (!window.ENGLISH_GRAMMAR_PART1_WORDS?.length) {
             window.ENGLISH_GRAMMAR_PART1_WORDS = await fetchCsvWords(resolvedAssets.englishCsv);
+        }
+        if (!window.HORIMIYA_GRAMMAR_WORDS?.length) {
+            window.HORIMIYA_GRAMMAR_WORDS = await fetchCsvWords(resolvedAssets.horimiyaCsv);
         }
         if (!window.TOEIC_PHRASE_WORDS?.length) {
             window.TOEIC_PHRASE_WORDS = await fetchCsvWords(resolvedAssets.toeicCsv);
