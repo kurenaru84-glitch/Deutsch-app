@@ -57,16 +57,30 @@ def drop_header(rows):
 
 
 def to_words(rows):
+    """先に出てきた行を優先し、後から来た重複は捨てる。
+
+    同じ構文の言い回しを後で貼り直しても既存側が残るよう、
+    構文そのものだけでなく「タイムスタンプ＋例文」でも重複を判定する。
+    """
     words = []
-    seen = set()
+    seen_patterns = set()
+    seen_sources = set()
+    skipped = []
     for time, pattern, example, jp in rows:
         if not pattern or not jp:
             continue
-        if pattern in seen:
-            print(f'  重複スキップ: {pattern}')
+        source_key = (time, example) if example else None
+        if pattern in seen_patterns or (source_key and source_key in seen_sources):
+            skipped.append(pattern)
             continue
-        seen.add(pattern)
+        seen_patterns.add(pattern)
+        if source_key:
+            seen_sources.add(source_key)
         words.append({'de': pattern, 'jp': jp, 'time': time, 'example': example})
+    if skipped:
+        print(f'  重複スキップ {len(skipped)}件:')
+        for s in skipped:
+            print(f'    {s}')
     return words
 
 
