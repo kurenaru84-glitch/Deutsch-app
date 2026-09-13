@@ -11,6 +11,7 @@ source of truth は data/horimiya.xlsx（無ければ data/horimiya.tsv）。
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -56,26 +57,48 @@ def drop_header(rows):
     return rows
 
 
+def skeleton(pattern):
+    """プレースホルダと記号を落として、英語の骨組みだけを語のリストで返す。"""
+    stripped = re.sub(r'\[[^\]]*\]', ' ', pattern)
+    stripped = re.sub(r"[^\w\s']", ' ', stripped.lower())
+    return [t for t in stripped.split() if t]
+
+
+def is_reworded(a, b):
+    """同じ構文の言い回し違いかどうか。
+
+    プレースホルダの付け方を変えただけの行は骨組みが一致するか、
+    片方がもう片方の先頭部分になる（while you still can ↔ while ...）。
+    1つの例文から別々の構文を拾った行は骨組みが噛み合わないので残る。
+    """
+    if not a or not b:
+        return False
+    shorter, longer = sorted((a, b), key=len)
+    return longer[:len(shorter)] == shorter
+
+
 def to_words(rows):
     """先に出てきた行を優先し、後から来た重複は捨てる。
 
-    同じ構文の言い回しを後で貼り直しても既存側が残るよう、
-    構文そのものだけでなく「タイムスタンプ＋例文」でも重複を判定する。
+    同じ範囲を貼り直しても既存側が残るよう、構文の完全一致だけでなく
+    「同じタイムスタンプ・同じ例文で、言い回しを変えただけ」の行も弾く。
     """
     words = []
     seen_patterns = set()
-    seen_sources = set()
+    by_source = {}
     skipped = []
     for time, pattern, example, jp in rows:
         if not pattern or not jp:
             continue
+        bones = skeleton(pattern)
         source_key = (time, example) if example else None
-        if pattern in seen_patterns or (source_key and source_key in seen_sources):
+        siblings = by_source.get(source_key, []) if source_key else []
+        if pattern in seen_patterns or any(is_reworded(bones, s) for s in siblings):
             skipped.append(pattern)
             continue
         seen_patterns.add(pattern)
         if source_key:
-            seen_sources.add(source_key)
+            by_source.setdefault(source_key, []).append(bones)
         words.append({'de': pattern, 'jp': jp, 'time': time, 'example': example})
     if skipped:
         print(f'  重複スキップ {len(skipped)}件:')
